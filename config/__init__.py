@@ -41,7 +41,7 @@ SHARED_MEM_SIZE: int = NUM_MOTORS * 8  # motors * PWM values * 8 bytes (float64)
 # Default layout uses 8 Pico boards with 8 motors per board.
 
 # Set True to test a single motor on Pico0 (motor 0 only).
-SINGLE_MOTOR_TEST: bool = True
+SINGLE_MOTOR_TEST: bool = False
 
 if NUM_MOTORS % NUM_PICOS != 0:
     raise ValueError("NUM_MOTORS must be divisible by NUM_PICOS")
@@ -90,5 +90,5 @@ SPI_DEVICE: int = 0        # SPI device number (0 for default)
 SPI_SPEED_HZ: int = 1000000  # 1 MHz SPI speed
 
 # GPIO Sync Pin Configuration
-SYNC_PIN: int = 17         # GPIO pin for synchronization trigger
+SYNC_PIN: int = 22         # GPIO pin for synchronization trigger
 SYNC_PULSE_WIDTH_US: int = 10  # Sync pulse width in microseconds

@@ -7,7 +7,7 @@ import platform
 import time
 from typing import List, Optional
 import numpy as np
-from config import NUM_MOTORS
+from config import NUM_MOTORS, SPI_BUS, SPI_DEVICE, SPI_SPEED_HZ, SYNC_PIN
 
 # Physical motor-to-byte mapping based on wiring configuration.
 # Default is identity mapping for NUM_MOTORS motors.
@@ -44,11 +44,11 @@ class RealSPI:
     def __init__(self):
         import spidev # type: ignore
         self.spi = spidev.SpiDev()
-        self.spi.open(0, 0)  # SPI0, CE0
-        self.spi.max_speed_hz = 1000000  # 1 MHz
+        self.spi.open(SPI_BUS, SPI_DEVICE)
+        self.spi.max_speed_hz = SPI_SPEED_HZ
         self.spi.mode = 0
         self.spi.bits_per_word = 8
-        print("[SPI] Initialized SPI0 (GPIO10=MOSI, GPIO11=SCLK)")
+        print(f"[SPI] Initialized SPI{SPI_BUS}, CE{SPI_DEVICE} (GPIO10=MOSI, GPIO11=SCLK)")
     
     def write_bytes(self, data: List[int]) -> None:
         """Send bytes via SPI. Each byte triggers CS toggle for Pico sync."""
@@ -61,7 +61,7 @@ class RealSPI:
 class RealGPIO:
     """Hardware GPIO driver using gpiod (Raspberry Pi 5)."""
     
-    def __init__(self, sync_pin: int = 22):
+    def __init__(self, sync_pin: int = SYNC_PIN):
         import gpiod # type: ignore
         from gpiod.line import Direction, Value # type: ignore
         import time
@@ -130,7 +130,7 @@ class HardwareInterface:
             print(f"[HW] Initializing hardware drivers...")
             try:
                 self.spi = RealSPI()
-                self.gpio = RealGPIO(sync_pin=22)
+                self.gpio = RealGPIO(sync_pin=SYNC_PIN)
             except Exception as e:
                 print(f"[HW] Hardware init failed: {e}")
                 print(f"[HW] Falling back to mock drivers")
