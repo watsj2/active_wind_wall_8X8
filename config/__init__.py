@@ -3,7 +3,11 @@ Global configuration constants for the Active Wind Wall Control System.
 """
 
 # Hardware Configuration
-NUM_MOTORS: int = 36
+NUM_MOTORS: int = 64
+GRID_ROWS: int = 8
+GRID_COLS: int = 8
+NUM_PICOS: int = 8
+MOTORS_PER_PICO: int = NUM_MOTORS // NUM_PICOS
 UPDATE_RATE_HZ: int = 400
 LOOP_TIME_MS: float = 1000.0 / UPDATE_RATE_HZ  # 2.5 ms
 
@@ -30,56 +34,26 @@ LOG_INTERVAL_MS: int = 100
 
 # Shared Memory
 SHARED_MEM_NAME: str = "aww_control_buffer"
-SHARED_MEM_SIZE: int = 36 * 8  # 36 motors * PWM values * 8 bytes (float64)
+SHARED_MEM_SIZE: int = NUM_MOTORS * 8  # motors * PWM values * 8 bytes (float64)
 
 # Pico Hardware Mapping
 # Maps motors to Picos and their pin positions on each Pico.
-# Modify this mapping to change which motors connect to which Picos.
-# Structure:
-#   - 'pico_id': Which Pico receives these motors (0-3 for 4 Picos)
-#   - 'motors': List of motor IDs for this Pico
-#   - 'pin_offset': Starting pin position on this Pico (for future use with varied pin layouts)
-#
-# PHYSICAL LAYOUT (default):
-#   Motors 0-8:    Top-Left Quadrant    → Pico0
-#   Motors 9-17:   Top-Right Quadrant   → Pico1
-#   Motors 18-26:  Bottom-Left Quadrant → Pico2
-#   Motors 27-35:  Bottom-Right Quadrant → Pico3
-#
-# CHANGE THIS MAPPING TO:
-#   - Swap which Pico connects to which quadrant
-#   - Change pin order within a Pico
-#   - Redistribute motors across Picos
-#   - Test with single Pico (motors map to Pico0, others are ignored)
+# Default layout uses 8 Pico boards with 8 motors per board.
 
 # Set True to test a single motor on Pico0 (motor 0 only).
 SINGLE_MOTOR_TEST: bool = True
 
+if NUM_MOTORS % NUM_PICOS != 0:
+    raise ValueError("NUM_MOTORS must be divisible by NUM_PICOS")
+
 FULL_PICO_MOTOR_MAP: dict = {
-    'quadrant_top_left': {
-        'pico_id': 0,
-        'motors': list(range(0, 9)),      # Motors 0-8
-        'pin_offset': 0,                  # Pins 0-8 on Pico0
-        'description': 'Top-Left 3x3 Grid'
-    },
-    'quadrant_top_right': {
-        'pico_id': 1,
-        'motors': list(range(9, 18)),     # Motors 9-17
-        'pin_offset': 0,                  # Pins 0-8 on Pico1
-        'description': 'Top-Right 3x3 Grid'
-    },
-    'quadrant_bottom_left': {
-        'pico_id': 2,
-        'motors': list(range(18, 27)),    # Motors 18-26
-        'pin_offset': 0,                  # Pins 0-8 on Pico2
-        'description': 'Bottom-Left 3x3 Grid'
-    },
-    'quadrant_bottom_right': {
-        'pico_id': 3,
-        'motors': list(range(27, 36)),    # Motors 27-35
-        'pin_offset': 0,                  # Pins 0-8 on Pico3
-        'description': 'Bottom-Right 3x3 Grid'
+    f"pico_{pico_id}": {
+        "pico_id": pico_id,
+        "motors": list(range(pico_id * MOTORS_PER_PICO, (pico_id + 1) * MOTORS_PER_PICO)),
+        "pin_offset": 0,
+        "description": f"Pico {pico_id} motor block"
     }
+    for pico_id in range(NUM_PICOS)
 }
 
 PICO_MOTOR_MAP: dict = (

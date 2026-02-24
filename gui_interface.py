@@ -5,6 +5,7 @@ Features: Multiple groups, live monitoring, custom Fourier signals.
 """
 
 import sys
+import math
 import numpy as np
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -18,7 +19,7 @@ import pyqtgraph as pg
 import multiprocessing
 from collections import deque
 
-from config import BASE_FREQUENCY, NUM_MOTORS, PWM_MIN, PWM_MAX
+from config import BASE_FREQUENCY, NUM_MOTORS, PWM_MIN, PWM_MAX, GRID_ROWS, GRID_COLS
 from src.physics.signal_designer import generate_sine_wave, generate_square_pulse, generate_uniform
 from src.core import MotorStateBuffer
 
@@ -138,6 +139,12 @@ class WindWallGUI(QMainWindow):
         self.monitor_data_time = deque(maxlen=200)  # 5 seconds at 40Hz
         self.monitor_data_pwm = deque(maxlen=200)
         self.monitor_timer = None
+        self.grid_rows = GRID_ROWS
+        self.grid_cols = GRID_COLS
+        if self.grid_rows * self.grid_cols != NUM_MOTORS:
+            # Fallback to a square/near-square grid if config values drift.
+            self.grid_cols = max(1, int(math.sqrt(NUM_MOTORS)))
+            self.grid_rows = math.ceil(NUM_MOTORS / self.grid_cols)
         self.experiment_start_time = None  # Set when experiment starts - never resets
         
         self.init_ui()
@@ -336,7 +343,7 @@ class WindWallGUI(QMainWindow):
     
     def create_grid_panel(self):
         """Create motor grid panel."""
-        group = QGroupBox("Motor Grid (6×6)")
+        group = QGroupBox(f"Motor Grid ({self.grid_rows}x{self.grid_cols})")
         layout = QVBoxLayout()
         
         info_label = QLabel("Click motors to assign to selected group")
@@ -347,9 +354,9 @@ class WindWallGUI(QMainWindow):
         grid = QGridLayout()
         grid.setSpacing(5)
         
-        for i in range(36):
-            row = i // 6
-            col = i % 6
+        for i in range(NUM_MOTORS):
+            row = i // self.grid_cols
+            col = i % self.grid_cols
             btn = MotorButton(i, self)
             self.motor_buttons.append(btn)
             grid.addWidget(btn, row, col)
@@ -474,7 +481,7 @@ class WindWallGUI(QMainWindow):
         control_layout.addWidget(self.monitor_type)
         
         self.monitor_motor_select = QComboBox()
-        for i in range(36):
+        for i in range(NUM_MOTORS):
             self.monitor_motor_select.addItem(f"Motor {i}")
         self.monitor_motor_select.currentIndexChanged.connect(self.on_monitor_selection_changed)
         control_layout.addWidget(self.monitor_motor_select)

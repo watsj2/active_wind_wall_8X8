@@ -8,13 +8,13 @@
 // CONFIGURATION
 // ==========================================
 
-// Board identifier - IMPORTANT: Change this for each Pico board (0, 1, 2, or 3)
-// Each board controls 9 motors based on its ID
+// Board identifier - IMPORTANT: Change this for each Pico board (0..7)
+// Each board controls 8 motors based on its ID
 #define PICO_ID {{PICO_ID}}
 
 // Motor configuration
-#define MOTORS_PER_PICO 9
-static const uint MOTOR_PINS[MOTORS_PER_PICO] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+#define MOTORS_PER_PICO 8
+static const uint MOTOR_PINS[MOTORS_PER_PICO] = {0, 1, 2, 3, 4, 5, 6, 7};
 
 // Status LED
 #define LED_PIN 25
@@ -28,13 +28,13 @@ static const uint MOTOR_PINS[MOTORS_PER_PICO] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 #define PIN_MOSI 16   // SPI0 RX (from Pi MOSI) - Data input
 
 // Frame structure
-// Total system: 36 motors across 4 Pico boards (9 motors each)
-// Each SPI frame contains 36 bytes, one per motor
-#define TOTAL_MOTORS    36
+// Total system: 64 motors across 8 Pico boards (8 motors each)
+// Each SPI frame contains 64 bytes, one per motor
+#define TOTAL_MOTORS    64
 #define FRAME_BYTES     TOTAL_MOTORS
 
 // Calculate which bytes in the frame belong to this Pico
-// Example: PICO_ID=1 -> motors 9-17 (bytes 9-17 in frame)
+// Example: PICO_ID=1 -> motors 8-15 (bytes 8-15 in frame)
 #define MY_START (PICO_ID * MOTORS_PER_PICO)
 #define MY_END   (MY_START + MOTORS_PER_PICO)
 
@@ -59,7 +59,7 @@ volatile bool sync_pulse_detected = false;  // Set by IRQ when SYNC pin goes hig
 volatile uint32_t sync_counter = 0;         // Counts SYNC pulses for LED blink
 
 // SPI frame tracking
-volatile uint8_t byte_index = 0;  // Current position in 36-byte frame (0..35)
+volatile uint8_t byte_index = 0;  // Current position in 64-byte frame (0..63)
 
 // ==========================================
 // PWM CONTROL
@@ -85,7 +85,7 @@ void set_motor_pwm_us(uint motor_index, uint16_t pulse_us) {
  * SYNC pin interrupt handler
  * 
  * Called on rising edge of SYNC signal from Raspberry Pi.
- * Signals that a complete 36-byte frame has been transmitted
+ * Signals that a complete 64-byte frame has been transmitted
  * and PWM values should be updated atomically.
  * 
  * Also blinks LED every 20 SYNC pulses to indicate activity.
@@ -161,7 +161,7 @@ int main() {
         
         // === Step A: Receive SPI data ===
         // Read bytes as they arrive over SPI
-        // Each byte represents one motor value (0-255) in the 36-motor array
+        // Each byte represents one motor value (0-255) in the 64-motor array
         while (spi_is_readable(SPI_INST)) {
             uint8_t rx = (uint8_t)spi_get_hw(SPI_INST)->dr;
 
@@ -169,7 +169,7 @@ int main() {
             if (byte_index < FRAME_BYTES) {
                 byte_index++;
             } else {
-                // Extra bytes beyond 36 are ignored until next SYNC
+                // Extra bytes beyond FRAME_BYTES are ignored until next SYNC
             }
 
             // Store only bytes that belong to this Pico's motors

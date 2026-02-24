@@ -1,10 +1,10 @@
 # Active Wind Wall Control System
 
-A real-time control system for a 36-motor Active Wind Wall that generates time-varying flow patterns using Fourier-based signal synthesis.
+A real-time control system for a 64-motor Active Wind Wall that generates time-varying flow patterns using Fourier-based signal synthesis.
 
 ## What This Code Does
 
-This system controls 36 motors (arranged in a 6×6 grid) to create precise airflow patterns. It:
+This system controls 64 motors (arranged in an 8x8 grid) to create precise airflow patterns. It:
 
 1. **Generates Signals** - Creates motor control signals using Fourier series (sine waves, square pulses, etc.)
 2. **Runs Control Loop** - Executes a high-speed loop at 400 Hz (every 2.5 ms) to update all motors
@@ -45,8 +45,6 @@ active_wind_wall/
 # Clone or download this repository
 cd active_wind_wall
 
-# Install dependencies
-pip install -r requirements.txt
 python3 -m venv venv
 source venv/bin/activate
 
@@ -96,11 +94,11 @@ Key settings are in [config/__init__.py](config/__init__.py):
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `NUM_MOTORS` | 36 | Number of motors in the grid |
+| `NUM_MOTORS` | 64 | Number of motors in the grid |
 | `UPDATE_RATE_HZ` | 400 | Control loop frequency (400 Hz = 2.5 ms) |
 | `PWM_MIN` / `PWM_MAX` | 1000 / 2000 | PWM pulse width range (microseconds) |
 | `SLEW_LIMIT` | 50 | Max PWM change per update (safety feature) |
-| `FOURIER_TERMS` | 20 | Number of Fourier terms for signal reconstruction |
+| `FOURIER_TERMS` | 7 | Number of Fourier terms for signal reconstruction |
 
 ## Signal Design
 
@@ -116,7 +114,7 @@ Each signal is pre-computed as Fourier coefficients, then reconstructed in real-
 
 Flight data is automatically saved to `logs/flight_log_YYYYMMDD_HHMMSS.csv` with:
 - Timestamp for each update
-- PWM values for all 36 motors
+- PWM values for all 64 motors
 - RPM telemetry (when using real hardware)
 
 Log files can be analyzed using the test notebooks in the `tests/` folder.

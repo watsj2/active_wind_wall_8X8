@@ -1,6 +1,6 @@
 # Pico Firmware Build System
 
-This directory contains firmware for the 4 Raspberry Pi Pico boards that control 36 motors (9 motors per board).
+This directory contains firmware for 8 Raspberry Pi Pico boards that control 64 motors (8 motors per board).
 
 ## Quick Start
 
@@ -15,8 +15,8 @@ This directory contains firmware for the 4 Raspberry Pi Pico boards that control
 3. Flash the generated `.uf2` files to your Pico boards
 
 That's it! The script automatically:
-- Generates 4 versions of the firmware (one for each board)
-- Builds all 4 versions
+- Generates 8 versions of the firmware (one for each board)
+- Builds all 8 versions
 - Outputs clean `.uf2` files ready to flash
 - Cleans up build artifacts
 
@@ -30,6 +30,10 @@ pico/
 ├── firmware_pico1.uf2         ← Flash to Pico #1  
 ├── firmware_pico2.uf2         ← Flash to Pico #2
 ├── firmware_pico3.uf2         ← Flash to Pico #3
+├── firmware_pico4.uf2         ← Flash to Pico #4
+├── firmware_pico5.uf2         ← Flash to Pico #5
+├── firmware_pico6.uf2         ← Flash to Pico #6
+├── firmware_pico7.uf2         ← Flash to Pico #7
 └── pico_sdk_import.cmake      (SDK configuration)
 ``` 
 

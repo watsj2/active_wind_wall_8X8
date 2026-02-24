@@ -2,7 +2,7 @@
 """
 Automated Pico Firmware Builder
 
-Builds firmware for all 4 Pico boards from a single template file.
+Builds firmware for all 8 Pico boards from a single template file.
 Only edits firmware_template.c, then run this script to generate all .uf2 files.
 
 Usage:
@@ -12,7 +12,7 @@ Output:
     pico/firmware_pico0.uf2
     pico/firmware_pico1.uf2
     pico/firmware_pico2.uf2
-    pico/firmware_pico3.uf2
+    pico/firmware_pico7.uf2
 """
 
 import os
@@ -27,7 +27,7 @@ SCRIPT_DIR = Path(__file__).parent.absolute()
 PICO_DIR = SCRIPT_DIR
 TEMPLATE_FILE = PICO_DIR / "firmware_template.c"
 CMAKE_TEMPLATE = PICO_DIR / "CMakeLists.txt"
-NUM_BOARDS = 4
+NUM_BOARDS = 8
 
 
 def print_header(message):

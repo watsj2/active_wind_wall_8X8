@@ -14,7 +14,7 @@ class MotorStateBuffer:
     Manages a shared memory buffer for motor PWM commands.
     
     Structure:
-    - Shape: (36,)
+    - Shape: (NUM_MOTORS,)
     - Values: Target PWM values (1000-2000)
     """
     
@@ -43,7 +43,7 @@ class MotorStateBuffer:
                 self.shm = shared_memory.SharedMemory(
                     name=self.name,
                     create=True,
-                    size=NUM_MOTORS * 8  # 36 * 8 bytes (float64)
+                    size=NUM_MOTORS * 8  # NUM_MOTORS * 8 bytes (float64)
                 )
                 self.array = np.ndarray(self.shape, dtype=self.dtype, buffer=self.shm.buf)
                 self.array[:] = 0.0
@@ -63,7 +63,7 @@ class MotorStateBuffer:
         Update PWM values in shared memory.
         
         Args:
-            pwm_values: numpy array of shape (36,) with PWM values
+            pwm_values: numpy array of shape (NUM_MOTORS,) with PWM values
         """
         self.array[:] = pwm_values
     
@@ -72,7 +72,7 @@ class MotorStateBuffer:
         Read PWM values from shared memory.
         
         Returns:
-            numpy array of shape (36,) with current PWM values
+            numpy array of shape (NUM_MOTORS,) with current PWM values
         """
         return self.array.copy()
     

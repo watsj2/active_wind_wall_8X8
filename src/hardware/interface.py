@@ -7,26 +7,11 @@ import platform
 import time
 from typing import List, Optional
 import numpy as np
+from config import NUM_MOTORS
 
-# Physical motor-to-byte mapping based on actual wiring configuration
-# This maps motor IDs (0-35) to byte positions (0-35) in the SPI packet
-# Byte positions 0-8   → Pico 0 reads these
-# Byte positions 9-17  → Pico 1 reads these
-# Byte positions 18-26 → Pico 2 reads these
-# Byte positions 27-35 → Pico 3 reads these
-PHYSICAL_MOTOR_ORDER = [
-    # Pico 0 (byte positions 0-8): motors in physical order
-    0, 1, 2, 6, 7, 8, 12, 13, 14,
-    
-    # Pico 1 (byte positions 9-17): motors in physical order
-    18, 19, 20, 24, 25, 26, 30, 31, 32,
-    
-    # Pico 2 (byte positions 18-26): motors in physical order
-    3, 4, 5, 9, 10, 11, 15, 16, 17,
-    
-    # Pico 3 (byte positions 27-35): motors in physical order
-    21, 22, 23, 27, 28, 29, 33, 34, 35
-]
+# Physical motor-to-byte mapping based on wiring configuration.
+# Default is identity mapping for NUM_MOTORS motors.
+PHYSICAL_MOTOR_ORDER = list(range(NUM_MOTORS))
 
 class MockSPI:
     """Mock SPI for development/testing on non-Pi systems."""
@@ -116,7 +101,7 @@ class HardwareInterface:
     Main hardware abstraction layer.
     
     Architecture:
-    - SPI broadcast: sends 36-byte frame to all Picos simultaneously
+    - SPI broadcast: sends NUM_MOTORS-byte frame to all Picos simultaneously
     - Sync pulse: triggers atomic PWM update on all Picos
     - Physical motor remapping: handles wiring configuration
     """
@@ -157,14 +142,10 @@ class HardwareInterface:
         """
         Send PWM values to ALL Picos in one Broadcast Frame.
         
-        The input pwm_values array is in logical motor order (0-35).
+        The input pwm_values array is in logical motor order (0..NUM_MOTORS-1).
         We remap it to physical wiring order before sending.
         
-        Packet structure: 36 bytes, one per motor in physical order
-        - Bytes 0-8   → Pico 0 (motors 0,1,2,6,7,8,12,13,14)
-        - Bytes 9-17  → Pico 1 (motors 18,19,20,24,25,26,30,31,32)
-        - Bytes 18-26 → Pico 2 (motors 3,4,5,9,10,11,15,16,17)
-        - Bytes 27-35 → Pico 3 (motors 21,22,23,27,28,29,33,34,35)
+        Packet structure: NUM_MOTORS bytes, one per motor in physical order.
         """
         self.frames_sent += 1
         
