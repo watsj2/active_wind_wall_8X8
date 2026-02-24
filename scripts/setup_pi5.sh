@@ -28,7 +28,7 @@ echo "[5/6] Creating virtual environment"
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements-pi-headless.txt
 
 echo "[6/6] Setup complete"
 echo "Reboot required once to apply SPI enable:"
