@@ -2,6 +2,7 @@
 #include "hardware/pwm.h"
 #include "hardware/spi.h"
 #include "hardware/gpio.h"
+#include "hardware/clocks.h"
 #include <stdbool.h>
 
 // ==========================================
@@ -18,6 +19,10 @@ static const uint MOTOR_PINS[MOTORS_PER_PICO] = {0, 1, 2, 3, 4, 5, 6, 7};
 
 // Status LED
 #define LED_PIN 25
+
+// Servo-style PWM output configuration for ESC control
+#define PWM_DIVIDER 64.0f
+#define PWM_FREQ_HZ 50.0f
 
 // SPI Configuration (Slave mode)
 // Receives motor commands from Raspberry Pi via SPI
@@ -49,6 +54,8 @@ static const uint MOTOR_PINS[MOTORS_PER_PICO] = {0, 1, 2, 3, 4, 5, 6, 7};
 // PWM hardware configuration for each motor
 uint slices[MOTORS_PER_PICO];      // PWM slice numbers
 uint channels[MOTORS_PER_PICO];    // PWM channel numbers (A or B)
+uint16_t pwm_wrap_value = 0;        // Shared PWM period for all motor outputs
+float counts_per_us = 0.0f;         // PWM counter ticks per microsecond
 
 // Motor control buffers
 volatile uint8_t motor_values[MOTORS_PER_PICO];         // Incoming values from SPI (0-255)
@@ -70,8 +77,8 @@ void set_motor_pwm_us(uint motor_index, uint16_t pulse_us) {
     if (pulse_us > 2000) pulse_us = 2000;
 
     // Convert microseconds to PWM counter level
-    uint16_t level = (uint16_t)(pulse_us * 2.34375f);
-    if (level > 31250) level = 31250;
+    uint16_t level = (uint16_t)(pulse_us * counts_per_us);
+    if (level > pwm_wrap_value) level = pwm_wrap_value;
 
     // Update PWM hardware
     pwm_set_chan_level(slices[motor_index], channels[motor_index], level);
@@ -109,6 +116,10 @@ void sync_irq_handler(uint gpio, uint32_t events) {
 int main() {
     stdio_init_all();
 
+    const uint32_t sys_hz = clock_get_hz(clk_sys);
+    counts_per_us = (float)sys_hz / PWM_DIVIDER / 1000000.0f;
+    pwm_wrap_value = (uint16_t)((float)sys_hz / PWM_DIVIDER / PWM_FREQ_HZ) - 1;
+
     // Initialize status LED (on at startup)
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
@@ -121,8 +132,8 @@ int main() {
         slices[i] = pwm_gpio_to_slice_num(MOTOR_PINS[i]);
         channels[i] = pwm_gpio_to_channel(MOTOR_PINS[i]);
 
-        pwm_set_clkdiv(slices[i], 64.0f);
-        pwm_set_wrap(slices[i], 31250);
+        pwm_set_clkdiv(slices[i], PWM_DIVIDER);
+        pwm_set_wrap(slices[i], pwm_wrap_value);
         pwm_set_enabled(slices[i], true);
 
         // Initialize motor buffers to zero
