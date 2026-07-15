@@ -16,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from coaxial_windwall.model import PIXEL_NUMBER_GRID  # noqa: E402
 from scripts.generate_motor_mapping import mapping_rows  # noqa: E402
 
 
@@ -163,13 +164,13 @@ def draw_grid(c: canvas.Canvas, x: float, y: float, w: float, h: float, prefix: 
             c.setFillColor(colors.white)
             c.setStrokeColor(GRID)
             c.rect(px, py, cell_w, cell_h, fill=1, stroke=1)
-            n = row * 8 + col + 1
+            n = PIXEL_NUMBER_GRID[row][col]
             set_font(c, "Helvetica-Bold", 6, INK)
             c.drawCentredString(px + cell_w / 2, py + cell_h / 2 - 2, f"{prefix}{n:02d}")
     set_font(c, "Helvetica-Bold", 8)
     c.drawString(x, y + h + 8, "Operator/front view")
     set_font(c, "Helvetica", 7, MID)
-    c.drawString(x, y - 12, "Numbering runs left-to-right in each row")
+    c.drawString(x, y - 12, "Original 8x8 Pico-block numbering")
 
 
 def controller_rows() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
@@ -199,6 +200,13 @@ def controller_rows() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     return summary[:8], summary[8:]
 
 
+def controller_channel_rows(controller: str) -> list[dict[str, str | int]]:
+    return sorted(
+        (row for row in mapping_rows() if row["controller"] == controller),
+        key=lambda row: int(row["channel_index"]),
+    )
+
+
 def page_cover(c: canvas.Canvas) -> None:
     c.setFillColor(colors.white)
     c.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
@@ -218,10 +226,10 @@ def page_cover(c: canvas.Canvas) -> None:
     box(c, MARGIN + 0.1 * inch, y, 1.3 * inch, 0.55 * inch, "Pi", colors.white)
     box(c, MARGIN + 2.0 * inch, y + 0.42 * inch, 1.55 * inch, 0.55 * inch, "C01-C08", FRONT)
     box(c, MARGIN + 2.0 * inch, y - 0.42 * inch, 1.55 * inch, 0.55 * inch, "C09-C16", BACK)
-    box(c, MARGIN + 4.1 * inch, y + 0.42 * inch, 1.35 * inch, 0.55 * inch, "old harness", FRONT)
-    box(c, MARGIN + 4.1 * inch, y - 0.42 * inch, 1.35 * inch, 0.55 * inch, "new infill", BACK)
-    box(c, MARGIN + 5.95 * inch, y + 0.42 * inch, 1.0 * inch, 0.55 * inch, "F motors", FRONT)
-    box(c, MARGIN + 5.95 * inch, y - 0.42 * inch, 1.0 * inch, 0.55 * inch, "B motors", BACK)
+    box(c, MARGIN + 4.1 * inch, y + 0.42 * inch, 1.35 * inch, 0.55 * inch, "old positions", FRONT)
+    box(c, MARGIN + 4.1 * inch, y - 0.42 * inch, 1.35 * inch, 0.55 * inch, "infill positions", BACK)
+    box(c, MARGIN + 5.95 * inch, y + 0.42 * inch, 1.0 * inch, 0.55 * inch, "F + B", FRONT)
+    box(c, MARGIN + 5.95 * inch, y - 0.42 * inch, 1.0 * inch, 0.55 * inch, "F + B", BACK)
     arrow(c, MARGIN + 1.4 * inch, y + 0.27 * inch, MARGIN + 2.0 * inch, y + 0.7 * inch, "cmd")
     arrow(c, MARGIN + 1.4 * inch, y + 0.27 * inch, MARGIN + 2.0 * inch, y - 0.15 * inch, "cmd")
     arrow(c, MARGIN + 3.55 * inch, y + 0.7 * inch, MARGIN + 4.1 * inch, y + 0.7 * inch, "PWM")
@@ -342,7 +350,9 @@ def page_signal_harness(c: canvas.Canvas) -> None:
     y = top - 3.15 * inch
     box(c, x, y, 1.25 * inch, 3.0 * inch, "Pico C01", FRONT)
     esc_x = x + 3.0 * inch
-    labels = ("F01", "B01", "F04", "B04", "F09", "B09", "F12", "B12")
+    c01_rows = controller_channel_rows("C01")
+    labels = tuple(str(row["motor_id"]) for row in c01_rows)
+    pair_ids = list(dict.fromkeys(str(row["pair_id"]) for row in c01_rows))
     for idx in range(8):
         yy = top - 0.45 * inch - idx * 0.34 * inch
         box(c, x + 1.55 * inch, yy, 0.78 * inch, 0.22 * inch, f"CH{idx + 1}/GP{idx}", colors.white, size=6)
@@ -351,7 +361,15 @@ def page_signal_harness(c: canvas.Canvas) -> None:
         arrow(c, x + 2.33 * inch, yy + 0.11 * inch, esc_x, yy + 0.11 * inch, "SIG")
     set_font(c, "Helvetica-Bold", 10)
     c.drawString(esc_x + 1.25 * inch, top - 0.35 * inch, "Example:")
-    draw_wrapped(c, "C01 reuses old wiring. Old outputs 1 and 2 are now F01 and B01. The same Pico also handles P04, P09, and P12.", esc_x + 1.25 * inch, top - 0.62 * inch, 1.85 * inch, 8, 11)
+    draw_wrapped(
+        c,
+        f"C01 reuses old wiring. Adjacent outputs are front/back for {', '.join(pair_ids)}.",
+        esc_x + 1.25 * inch,
+        top - 0.62 * inch,
+        1.85 * inch,
+        8,
+        11,
+    )
     warning_band(c, MARGIN, 1.03 * inch, PAGE_W - 2 * MARGIN, "Each ESC gets its own signal channel. Do not join front and back pair signals.")
     draw_footer(c, 6)
 

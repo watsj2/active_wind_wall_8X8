@@ -34,6 +34,16 @@ C09-C16  -> new infill controllers
 The build script generates both `CONTROLLER_ID` and each controller's
 `HOST_INDICES` list. Do not derive host ownership from `controller_id * 8`.
 
+## Required Reflash For Approved Numbering
+
+The `Book.xlsx` numbering changes every controller's compiled `HOST_INDICES`
+table. The Pico positions and local output wiring do not move: leave each Pico
+at `C01-C16` and leave `CH1-CH8` on `GP0-GP7`. Before powered operation, flash
+every controller with the correspondingly named firmware file generated here.
+
+Do not swap firmware between controller positions. For example, the physical
+`C05` Pico must receive `firmware_c05.uf2`.
+
 Every controller should use the same local PWM pin map:
 
 ```text

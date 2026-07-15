@@ -21,7 +21,7 @@ The control interface is a direct 8x8x2 extrapolation of the original German
 
 - New project files
 - New 128-motor addressing model
-- New mock-safe hardware interface
+- Real shared-SPI/GPIO transport, with explicit mock mode for testing
 - German-derived PyQt6 experiment GUI for the coaxial grid
 - Dark-mode operator interface
 - Per-group sine, square, constant, and custom Fourier signals
@@ -31,25 +31,28 @@ The control interface is a direct 8x8x2 extrapolation of the original German
 - JSON group/signal preset save and load
 - Selected-pair controller/channel inspector and C01-C16 highlighting
 - Lightweight painted pixel bars tuned for Raspberry Pi use
-- Final row-major motor numbering with harness-preserving controller mapping
+- Original 8x8 Pico-block motor numbering with harness-preserving controller mapping
 - Color-coded 8x8x2 Pico/controller mapping image
 - Defined v1 host-to-controller PWM protocol
 - Built C01-C16 Pico UF2 firmware images for the current mapping
 - No inherited Testo or unverified telemetry path
 
-The GUI rewrite did not change the motor map, controller map, v1 protocol, or
-C01-C16 UF2 firmware. Real hardware transport remains deliberately disabled in
-the host interface pending bench validation.
+The controller positions and channels preserve the approved coaxial layout.
+The motor numbers follow the proven 8x8 Pi/Pico wall and `Book.xlsx`.
 
 ## Motor Mapping
 
-The fixed motor numbering is row-major:
+The fixed motor numbering follows the original 8x8 Pico blocks:
 
 ```text
-P01-P08  -> R1, left to right
-P09-P16  -> R2, left to right
-...
-P57-P64  -> R8, left to right
+R1 -> P01, P02, P03, P04, P33, P34, P35, P36
+R2 -> P05, P06, P07, P08, P37, P38, P39, P40
+R3 -> P09, P10, P11, P12, P41, P42, P43, P44
+R4 -> P13, P14, P15, P16, P45, P46, P47, P48
+R5 -> P17, P18, P19, P20, P49, P50, P51, P52
+R6 -> P21, P22, P23, P24, P53, P54, P55, P56
+R7 -> P25, P26, P27, P28, P57, P58, P59, P60
+R8 -> P29, P30, P31, P32, P61, P62, P63, P64
 ```
 
 The controller mapping preserves the old 8x8 harness where practical:
@@ -59,7 +62,7 @@ The controller mapping preserves the old 8x8 harness where practical:
   `F01` and `B01`.
 - `C09-C16` are new infill controllers for the middle positions.
 
-Example: `C01` now drives `P01`, `P04`, `P09`, and `P12`, with front/back on
+Example: `C01` drives `P01`, `P04`, `P05`, and `P08`, with front/back on
 adjacent channels.
 
 Human-readable mapping:
@@ -93,6 +96,11 @@ pico/firmware_c01.uf2
 ...
 pico/firmware_c16.uf2
 ```
+
+The approved motor-number change alters the compiled `HOST_INDICES` table in
+all 16 firmware images. Keep every Pico in its existing physical `C01-C16`
+position and keep `CH1-CH8` wiring unchanged, but reflash each controller with
+its matching `firmware_cNN.uf2` before powered operation.
 
 ## GUI Tools
 
@@ -138,7 +146,7 @@ or:
 python3 -m py_compile main.py config/__init__.py coaxial_windwall/*.py coaxial_windwall/*/*.py
 python3 scripts/generate_motor_mapping.py --check
 python3 -m unittest discover -s tests -v
-python3 main.py --smoke-test
+python3 main.py --mock --smoke-test
 ```
 
 ## Design Rule

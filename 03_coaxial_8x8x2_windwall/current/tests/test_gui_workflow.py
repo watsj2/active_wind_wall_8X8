@@ -25,7 +25,7 @@ class GermanDerivedGuiWorkflowTests(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.original_presets_path = app_module.GUI_PRESETS_PATH
         app_module.GUI_PRESETS_PATH = Path(self.temp_dir.name) / "session.json"
-        self.window = CoaxialWindwallWindow()
+        self.window = CoaxialWindwallWindow(use_mock=True)
 
     def tearDown(self) -> None:
         self.window.close()
@@ -74,6 +74,17 @@ class GermanDerivedGuiWorkflowTests(unittest.TestCase):
         back = CoaxialAddress(0, 0, 1)
         self.assertEqual((front.controller_label, front.controller_channel_label), ("C01", "CH1"))
         self.assertEqual((back.controller_label, back.controller_channel_label), ("C01", "CH2"))
+
+    def test_excel_numbering_is_used_by_grid_assignments(self) -> None:
+        front = CoaxialAddress(0, 4, 0)
+        back = CoaxialAddress(0, 4, 1)
+        self.assertEqual((front.pair_label, front.motor_index), ("P33", 32))
+        self.assertEqual((back.label, back.motor_index), ("B33", 96))
+        self.assertEqual((front.controller_label, front.controller_channel_label), ("C05", "CH1"))
+
+        self.window.assign_pixel(0, 4)
+        self.assertEqual(self.window.motor_owner[32], 0)
+        self.assertEqual(self.window.motor_owner[96], 0)
 
 
 if __name__ == "__main__":

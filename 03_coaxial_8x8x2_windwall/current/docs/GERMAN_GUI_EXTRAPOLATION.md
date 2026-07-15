@@ -24,25 +24,25 @@ An operator can assign both motors in a pair together or target only one layer.
 Group membership stores canonical host motor indices:
 
 ```text
-0-63    front F01-F64, row-major
-64-127  back  B01-B64, row-major
+0-63    front F01-F64, ordered by physical motor number
+64-127  back  B01-B64, ordered by physical motor number
 ```
 
 Signal generation produces a complete 128-value host frame in that order. The
 existing address model remains the only authority for translating a selected
 pixel to controller and channel labels.
 
-## Frozen Hardware Boundary
+## Hardware Boundary
 
-The GUI rewrite does not alter:
+The GUI does not independently define controller ownership. It consumes:
 
-- `coaxial_windwall/model.py` or `CONTROLLER_HOST_INDICES`;
+- `coaxial_windwall/model.py` and `CONTROLLER_HOST_INDICES`;
 - `config/motor_controller_mapping.csv`;
 - the C01-C16 physical controller/channel layout;
 - `coaxial_windwall/protocol.py` or the 266-byte v1 frame format;
 - `pico/firmware_controller_template.c`;
 - `pico/build_all_firmware.py`;
-- any `pico/firmware_c01.uf2` through `pico/firmware_c16.uf2` image.
+- generated `pico/firmware_c01.uf2` through `pico/firmware_c16.uf2` images.
 
 The host interface now passes the GUI's arm state into the already-defined v1
 `FLAG_OUTPUT_ARMED` field. This uses the existing protocol as intended; it does

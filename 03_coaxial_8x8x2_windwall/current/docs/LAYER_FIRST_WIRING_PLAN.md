@@ -15,14 +15,18 @@ The PDF wiring manual has not been regenerated for this mapping yet.
 
 ## Motor Numbering
 
-Wind-pixel labels are row-major from the operator/front view:
+Wind-pixel labels follow the original 8x8 Pico blocks from the operator/front
+view:
 
 ```text
-P01-P08  -> R1, left to right
-P09-P16  -> R2, left to right
-P17-P24  -> R3, left to right
-...
-P57-P64  -> R8, left to right
+R1 -> P01, P02, P03, P04, P33, P34, P35, P36
+R2 -> P05, P06, P07, P08, P37, P38, P39, P40
+R3 -> P09, P10, P11, P12, P41, P42, P43, P44
+R4 -> P13, P14, P15, P16, P45, P46, P47, P48
+R5 -> P17, P18, P19, P20, P49, P50, P51, P52
+R6 -> P21, P22, P23, P24, P53, P54, P55, P56
+R7 -> P25, P26, P27, P28, P57, P58, P59, P60
+R8 -> P29, P30, P31, P32, P61, P62, P63, P64
 ```
 
 Each wind pixel has two motor outputs:
@@ -63,14 +67,14 @@ CH8 -> GP7
 ## Old-Harness Controllers
 
 ```text
-C01 -> P01, P04, P09, P12
-C02 -> P17, P20, P25, P28
-C03 -> P33, P36, P41, P44
-C04 -> P49, P52, P57, P60
-C05 -> P05, P08, P13, P16
-C06 -> P21, P24, P29, P32
-C07 -> P37, P40, P45, P48
-C08 -> P53, P56, P61, P64
+C01 -> P01, P04, P05, P08
+C02 -> P09, P12, P13, P16
+C03 -> P17, P20, P21, P24
+C04 -> P25, P28, P29, P32
+C05 -> P33, P36, P37, P40
+C06 -> P41, P44, P45, P48
+C07 -> P49, P52, P53, P56
+C08 -> P57, P60, P61, P64
 ```
 
 Example C01 channel order:
@@ -80,23 +84,23 @@ C01 CH1 / GP0 -> F01
 C01 CH2 / GP1 -> B01
 C01 CH3 / GP2 -> F04
 C01 CH4 / GP3 -> B04
-C01 CH5 / GP4 -> F09
-C01 CH6 / GP5 -> B09
-C01 CH7 / GP6 -> F12
-C01 CH8 / GP7 -> B12
+C01 CH5 / GP4 -> F05
+C01 CH6 / GP5 -> B05
+C01 CH7 / GP6 -> F08
+C01 CH8 / GP7 -> B08
 ```
 
 ## New-Infill Controllers
 
 ```text
-C09 -> P02, P03, P10, P11
-C10 -> P18, P19, P26, P27
-C11 -> P34, P35, P42, P43
-C12 -> P50, P51, P58, P59
-C13 -> P06, P07, P14, P15
-C14 -> P22, P23, P30, P31
-C15 -> P38, P39, P46, P47
-C16 -> P54, P55, P62, P63
+C09 -> P02, P03, P06, P07
+C10 -> P10, P11, P14, P15
+C11 -> P18, P19, P22, P23
+C12 -> P26, P27, P30, P31
+C13 -> P34, P35, P38, P39
+C14 -> P42, P43, P46, P47
+C15 -> P50, P51, P54, P55
+C16 -> P58, P59, P62, P63
 ```
 
 Example C09 channel order:

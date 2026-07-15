@@ -3,7 +3,8 @@
 ## Current Status
 
 - The v1 host-to-controller protocol is defined.
-- Motor/pixel order is row-major again: `P01-P08` are the top row left-to-right.
+- Motor/pixel order follows the approved original 8x8 Pico-block numbering:
+  the top row is `P01-P04, P33-P36`.
 - Controller mapping now preserves the original 8x8 harness where practical:
   `C01-C08` are old-harness controllers and `C09-C16` are new infill
   controllers.
@@ -11,8 +12,10 @@
   not own contiguous `controller_id * 8` host values.
 - The wiring manual PDF has been regenerated for the harness-preserving map in
   both `docs/` and on the Desktop.
-- No hardware was flashed during this work.
-- Real output from the GUI/hardware interface remains intentionally disabled.
+- New `C01-C16` UF2 files have been built, but no hardware was flashed during
+  this work. All 16 physical Picos require their matching new image.
+- The GUI defaults to the real SPI/GPIO transport; `--mock` is available for
+  simulation and smoke tests.
 
 ## Protocol
 
@@ -36,12 +39,13 @@ Protocol summary:
   - 8-byte header
   - 128 x little-endian `uint16` PWM pulse widths in microseconds
   - CRC-16/CCITT-FALSE
-- Payload order is layer-first and row-major inside each layer:
+- Payload order is layer-first and numeric by the original Pico-block motor
+  number inside each layer:
   - host indices `0-63` = front plane `F01-F64`
   - host indices `64-127` = back plane `B01-B64`
 - Controller ownership is explicit:
-  - `C01` channels: `F01`, `B01`, `F04`, `B04`, `F09`, `B09`, `F12`, `B12`
-  - `C09` channels: `F02`, `B02`, `F03`, `B03`, `F10`, `B10`, `F11`, `B11`
+  - `C01` channels: `F01`, `B01`, `F04`, `B04`, `F05`, `B05`, `F08`, `B08`
+  - `C09` channels: `F02`, `B02`, `F03`, `B03`, `F06`, `B06`, `F07`, `B07`
 - Firmware must require valid magic/version/type/length/CRC.
 - Firmware must idle at `1000 us` if the output-armed flag is clear, the frame
   is invalid, or no valid frame has been received for `250 ms`.
@@ -79,7 +83,7 @@ python3 pico/build_all_firmware.py
 ```bash
 python3 -m py_compile main.py config/__init__.py coaxial_windwall/*.py coaxial_windwall/*/*.py pico/build_all_firmware.py
 python3 scripts/generate_motor_mapping.py --check
-timeout 5 env QT_QPA_PLATFORM=offscreen python3 main.py --smoke-test
+timeout 5 env QT_QPA_PLATFORM=offscreen python3 main.py --mock --smoke-test
 python3 scripts/build_wiring_manual_pdf.py --desktop-copy
 ```
 
@@ -99,7 +103,7 @@ Bench-test `C01` first because it uses the reused old harness:
    unarmed valid frames.
 4. Verify one armed channel at a low value while the other seven stay idle.
 5. Confirm channel order:
-   `F01`, `B01`, `F04`, `B04`, `F09`, `B09`, `F12`, `B12`.
+   `F01`, `B01`, `F04`, `B04`, `F05`, `B05`, `F08`, `B08`.
 
 Only after C01 is correct should the rest of the old-harness controllers and
 then the new infill controllers be flashed.

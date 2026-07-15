@@ -4,8 +4,8 @@ This protocol defines the first bench-testable command path for the Coaxial
 8x8x2 Windwall. It is for PWM commands only. Tach/readback should be added only
 after one controller has been proven with this command frame.
 
-Real wall output remains disabled in the GUI/hardware interface until the Pico
-firmware and one-controller bench test are complete.
+The GUI defaults to the real SPI/GPIO transport. Use `python3 main.py --mock`
+only for simulation or GUI verification without the controller bus.
 
 ## Transport
 
@@ -53,22 +53,22 @@ controller map preserves the old 8x8 harness where possible, so each controller
 uses an explicit eight-entry host-index list.
 
 ```text
-C01 / controller_id 0  old harness  P01, P04, P09, P12
-C02 / controller_id 1  old harness  P17, P20, P25, P28
-C03 / controller_id 2  old harness  P33, P36, P41, P44
-C04 / controller_id 3  old harness  P49, P52, P57, P60
-C05 / controller_id 4  old harness  P05, P08, P13, P16
-C06 / controller_id 5  old harness  P21, P24, P29, P32
-C07 / controller_id 6  old harness  P37, P40, P45, P48
-C08 / controller_id 7  old harness  P53, P56, P61, P64
-C09 / controller_id 8  new infill   P02, P03, P10, P11
-C10 / controller_id 9  new infill   P18, P19, P26, P27
-C11 / controller_id 10 new infill   P34, P35, P42, P43
-C12 / controller_id 11 new infill   P50, P51, P58, P59
-C13 / controller_id 12 new infill   P06, P07, P14, P15
-C14 / controller_id 13 new infill   P22, P23, P30, P31
-C15 / controller_id 14 new infill   P38, P39, P46, P47
-C16 / controller_id 15 new infill   P54, P55, P62, P63
+C01 / controller_id 0  old harness  P01, P04, P05, P08
+C02 / controller_id 1  old harness  P09, P12, P13, P16
+C03 / controller_id 2  old harness  P17, P20, P21, P24
+C04 / controller_id 3  old harness  P25, P28, P29, P32
+C05 / controller_id 4  old harness  P33, P36, P37, P40
+C06 / controller_id 5  old harness  P41, P44, P45, P48
+C07 / controller_id 6  old harness  P49, P52, P53, P56
+C08 / controller_id 7  old harness  P57, P60, P61, P64
+C09 / controller_id 8  new infill   P02, P03, P06, P07
+C10 / controller_id 9  new infill   P10, P11, P14, P15
+C11 / controller_id 10 new infill   P18, P19, P22, P23
+C12 / controller_id 11 new infill   P26, P27, P30, P31
+C13 / controller_id 12 new infill   P34, P35, P38, P39
+C14 / controller_id 13 new infill   P42, P43, P46, P47
+C15 / controller_id 14 new infill   P50, P51, P54, P55
+C16 / controller_id 15 new infill   P58, P59, P62, P63
 ```
 
 For example, `C01` extracts these host indices:
@@ -78,10 +78,10 @@ CH1 -> F01 host index 0
 CH2 -> B01 host index 64
 CH3 -> F04 host index 3
 CH4 -> B04 host index 67
-CH5 -> F09 host index 8
-CH6 -> B09 host index 72
-CH7 -> F12 host index 11
-CH8 -> B12 host index 75
+CH5 -> F05 host index 4
+CH6 -> B05 host index 68
+CH7 -> F08 host index 7
+CH8 -> B08 host index 71
 ```
 
 ## Frame Format
@@ -117,13 +117,14 @@ reflection false
 Payload values are 16-bit PWM pulse widths in microseconds. Valid command range
 is `1000-2000`.
 
-The host order is layer-first and row-major within each layer:
+The host order is layer-first and numeric by the original 8x8 Pico-block motor
+number within each layer:
 
 ```text
 host indices 0-63    -> front plane F01-F64
 host indices 64-127  -> back plane B01-B64
-F01-F08 / B01-B08    -> R1 left-to-right
-F09-F16 / B09-B16    -> R2 left-to-right
+R1 -> 01,02,03,04,33,34,35,36
+R2 -> 05,06,07,08,37,38,39,40
 ```
 
 Examples:
@@ -138,8 +139,8 @@ B64 -> host index 127 -> payload bytes 262-263
 Controller extraction examples:
 
 ```text
-C01 / controller_id 0 reads host indices 0,64,3,67,8,72,11,75
-C09 / controller_id 8 reads host indices 1,65,2,66,9,73,10,74
+C01 / controller_id 0 reads host indices 0,64,3,67,4,68,7,71
+C09 / controller_id 8 reads host indices 1,65,2,66,5,69,6,70
 ```
 
 ## Firmware Latch Rules

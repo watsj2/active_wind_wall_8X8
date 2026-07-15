@@ -28,18 +28,19 @@ primary IDs in logs, command files, or hardware protocols.
 
 ## Final Motor Mapping
 
-The fixed motor numbering is row-major. Front-plane motors occupy host frame
-indices `0-63`; back-plane motors occupy indices `64-127`.
+The fixed motor numbering follows the original 8x8 Pico blocks. Front-plane
+motors occupy host frame indices `0-63`; back-plane motors occupy indices
+`64-127`.
 
 ```text
-R1 C1 Front / F01 -> motor 0
-R1 C2 Front / F02 -> motor 1
-...
-R8 C8 Front / F64 -> motor 63
-R1 C1 Back  / B01 -> motor 64
-R1 C2 Back  / B02 -> motor 65
-...
-R8 C8 Back  / B64 -> motor 127
+R1 -> P01, P02, P03, P04, P33, P34, P35, P36
+R2 -> P05, P06, P07, P08, P37, P38, P39, P40
+R3 -> P09, P10, P11, P12, P41, P42, P43, P44
+R4 -> P13, P14, P15, P16, P45, P46, P47, P48
+R5 -> P17, P18, P19, P20, P49, P50, P51, P52
+R6 -> P21, P22, P23, P24, P53, P54, P55, P56
+R7 -> P25, P26, P27, P28, P57, P58, P59, P60
+R8 -> P29, P30, P31, P32, P61, P62, P63, P64
 ```
 
 The controller layout is 16 controllers with 8 outputs each, but controllers do
@@ -48,8 +49,8 @@ Adjacent old outputs become front/back channels for one coaxial pixel. `C09-C16`
 fill the middle positions.
 
 ```text
-C01 CH1-CH8 -> F01, B01, F04, B04, F09, B09, F12, B12
-C09 CH1-CH8 -> F02, B02, F03, B03, F10, B10, F11, B11
+C01 CH1-CH8 -> F01, B01, F04, B04, F05, B05, F08, B08
+C09 CH1-CH8 -> F02, B02, F03, B03, F06, B06, F07, B07
 ```
 
 The canonical controller lookup is `CONTROLLER_HOST_INDICES` in

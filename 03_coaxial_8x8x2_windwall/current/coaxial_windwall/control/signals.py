@@ -164,7 +164,7 @@ def build_group_frame(
     elapsed_s: float,
     output_max: int = PWM_UI_MAX,
 ) -> list[int]:
-    """Build one layer-first, row-major 128-motor frame."""
+    """Build one layer-first frame ordered by physical motor number."""
 
     frame = [PWM_IDLE] * NUM_MOTORS
     for group in groups:

@@ -39,6 +39,7 @@ from PyQt6.QtWidgets import (
 from config import (
     COMMAND_RATE_HZ,
     CONTROLLER_COUNT,
+    DEFAULT_HARDWARE_MODE,
     GRID_COLS,
     GRID_ROWS,
     GUI_PRESETS_PATH,
@@ -275,12 +276,14 @@ class SignalPlot(QWidget):
 class CoaxialWindwallWindow(QMainWindow):
     """8x8x2 extrapolation of the original German group/signal GUI."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, use_mock: bool | None = None) -> None:
         super().__init__()
         self.setWindowTitle("Coaxial 8x8x2 Windwall - German Control Model")
         self.resize(1480, 920)
 
-        self.hardware = HardwareInterface(use_mock=True)
+        if use_mock is None:
+            use_mock = DEFAULT_HARDWARE_MODE != "real"
+        self.hardware = HardwareInterface(use_mock=use_mock)
         self.groups: list[SignalGroup] = []
         self.motor_owner: list[int | None] = [None] * NUM_MOTORS
         self.current_pwm = [PWM_IDLE] * NUM_MOTORS
@@ -353,7 +356,7 @@ class CoaxialWindwallWindow(QMainWindow):
         titles.addWidget(subtitle)
         layout.addLayout(titles)
         layout.addStretch(1)
-        self.status_label = QLabel("DISARMED / MOCK")
+        self.status_label = QLabel(f"DISARMED / {self.hardware.mode_name}")
         self.status_label.setObjectName("Status")
         layout.addWidget(self.status_label)
         self.timer_label = QLabel("00:00.0")
@@ -967,13 +970,13 @@ class CoaxialWindwallWindow(QMainWindow):
 
     def refresh_status(self) -> None:
         if self.experiment_running:
-            text = "RUNNING / MOCK"
+            text = f"RUNNING / {self.hardware.mode_name}"
             status_style = "background:#0f3328;color:#6ee7b7;border:1px solid #15745b;"
         elif self.is_armed:
-            text = "ARMED / MOCK"
+            text = f"ARMED / {self.hardware.mode_name}"
             status_style = "background:#3b2b0c;color:#fcd34d;border:1px solid #a16207;"
         else:
-            text = "DISARMED / MOCK"
+            text = f"DISARMED / {self.hardware.mode_name}"
             status_style = "background:#132033;color:#9fb0c5;border:1px solid #34445b;"
         self.status_label.setText(text)
         self.status_label.setStyleSheet(
@@ -1031,14 +1034,15 @@ class CoaxialWindwallWindow(QMainWindow):
 
     def session_data(self) -> dict:
         return {
-            "schema": 2,
+            "schema": 3,
             "foundation": "german-6x6-group-signal-model",
             "groups": [group.to_dict() for group in self.groups],
             "motor_owner": self.motor_owner,
         }
 
     def apply_session_data(self, data: dict) -> bool:
-        if data.get("schema") != 2 or not isinstance(data.get("groups"), list):
+        schema = data.get("schema")
+        if schema not in (2, 3) or not isinstance(data.get("groups"), list):
             return False
         groups = [
             SignalGroup.from_dict(item, GROUP_COLORS[index % len(GROUP_COLORS)])
@@ -1048,6 +1052,17 @@ class CoaxialWindwallWindow(QMainWindow):
         if not groups:
             return False
         owners = data.get("motor_owner", [])
+        if schema == 2 and len(owners) == NUM_MOTORS:
+            migrated: list[int | None] = [None] * NUM_MOTORS
+            for row in range(GRID_ROWS):
+                for col in range(GRID_COLS):
+                    old_pixel_index = row * GRID_COLS + col
+                    new_pixel_index = CoaxialAddress(row, col, 0).pixel_index
+                    for layer in range(2):
+                        migrated[layer * 64 + new_pixel_index] = owners[
+                            layer * 64 + old_pixel_index
+                        ]
+            owners = migrated
         if len(owners) != NUM_MOTORS:
             owners = [None] * NUM_MOTORS
             for group_index, group in enumerate(groups):
@@ -1123,10 +1138,10 @@ class CoaxialWindwallWindow(QMainWindow):
         event.accept()
 
 
-def run_app(smoke_test_ms: int = 0) -> int:
+def run_app(smoke_test_ms: int = 0, *, use_mock: bool | None = None) -> int:
     app = QApplication(sys.argv[:1])
     app.setFont(QFont("Arial", 9))
-    window = CoaxialWindwallWindow()
+    window = CoaxialWindwallWindow(use_mock=use_mock)
     window.show()
     if smoke_test_ms:
         QTimer.singleShot(smoke_test_ms, app.quit)

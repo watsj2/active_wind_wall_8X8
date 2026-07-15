@@ -19,6 +19,34 @@ from config import (
 )
 
 
+# Physical motor numbering inherited from the proven 8x8 Pi/Pico wall.
+# Each value is the one-based pair number installed at that grid location.
+PIXEL_NUMBER_GRID: tuple[tuple[int, ...], ...] = (
+    (1, 2, 3, 4, 33, 34, 35, 36),
+    (5, 6, 7, 8, 37, 38, 39, 40),
+    (9, 10, 11, 12, 41, 42, 43, 44),
+    (13, 14, 15, 16, 45, 46, 47, 48),
+    (17, 18, 19, 20, 49, 50, 51, 52),
+    (21, 22, 23, 24, 53, 54, 55, 56),
+    (25, 26, 27, 28, 57, 58, 59, 60),
+    (29, 30, 31, 32, 61, 62, 63, 64),
+)
+
+_pixel_numbers = [number for row in PIXEL_NUMBER_GRID for number in row]
+if sorted(_pixel_numbers) != list(range(1, GRID_ROWS * GRID_COLS + 1)):
+    raise ValueError("PIXEL_NUMBER_GRID must contain each pair number 1-64 once")
+
+PIXEL_LOCATION_BY_INDEX: tuple[tuple[int, int], ...] = tuple(
+    next(
+        (row, col)
+        for row in range(GRID_ROWS)
+        for col in range(GRID_COLS)
+        if PIXEL_NUMBER_GRID[row][col] == pixel_number
+    )
+    for pixel_number in range(1, GRID_ROWS * GRID_COLS + 1)
+)
+
+
 @dataclass(frozen=True)
 class CoaxialAddress:
     """A physical motor address in row, column, and coaxial layer form."""
@@ -37,7 +65,7 @@ class CoaxialAddress:
 
     @property
     def pixel_index(self) -> int:
-        return self.row * GRID_COLS + self.col
+        return PIXEL_NUMBER_GRID[self.row][self.col] - 1
 
     @property
     def pixel_number(self) -> int:
@@ -114,7 +142,7 @@ def address_from_motor_index(motor_index: int) -> CoaxialAddress:
         raise ValueError(f"motor_index out of range: {motor_index}")
     motors_per_layer = GRID_ROWS * GRID_COLS
     layer, pixel_index = divmod(motor_index, motors_per_layer)
-    row, col = divmod(pixel_index, GRID_COLS)
+    row, col = PIXEL_LOCATION_BY_INDEX[pixel_index]
     return CoaxialAddress(row=row, col=col, layer=layer)
 
 
@@ -130,8 +158,8 @@ def _motor_index_for_pixel(pixel_index: int, layer: int) -> int:
     return layer * motors_per_layer + pixel_index
 
 
-def _row_major_pixel_index(row: int, col: int) -> int:
-    return row * GRID_COLS + col
+def _pixel_index_at_location(row: int, col: int) -> int:
+    return PIXEL_NUMBER_GRID[row][col] - 1
 
 
 def _front_back_channel_group(pixel_indices: Iterable[int]) -> tuple[int, ...]:
@@ -149,82 +177,82 @@ def _front_back_channel_group(pixel_indices: Iterable[int]) -> tuple[int, ...]:
 # Each controller owns four wind pixels, with channels ordered F/B per pixel.
 CONTROLLER_HOST_INDICES: tuple[tuple[int, ...], ...] = (
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (0, 1)
         for col in (0, 3)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (2, 3)
         for col in (0, 3)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (4, 5)
         for col in (0, 3)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (6, 7)
         for col in (0, 3)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (0, 1)
         for col in (4, 7)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (2, 3)
         for col in (4, 7)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (4, 5)
         for col in (4, 7)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (6, 7)
         for col in (4, 7)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (0, 1)
         for col in (1, 2)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (2, 3)
         for col in (1, 2)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (4, 5)
         for col in (1, 2)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (6, 7)
         for col in (1, 2)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (0, 1)
         for col in (5, 6)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (2, 3)
         for col in (5, 6)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (4, 5)
         for col in (5, 6)
     ),
     _front_back_channel_group(
-        _row_major_pixel_index(row, col)
+        _pixel_index_at_location(row, col)
         for row in (6, 7)
         for col in (5, 6)
     ),
@@ -263,7 +291,7 @@ def clamp_pwm(value: int | float) -> int:
     return max(PWM_MIN, min(PWM_MAX, int(round(value))))
 
 
-def validate_pwm_frame(values: list[int]) -> list[int]:
+def validate_pwm_frame(values: Sequence[int | float]) -> list[int]:
     if len(values) != NUM_MOTORS:
         raise ValueError(f"expected {NUM_MOTORS} PWM values, got {len(values)}")
     return [clamp_pwm(value) for value in values]

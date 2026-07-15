@@ -12,6 +12,7 @@ from coaxial_windwall.control.signals import (
     fraction_to_pwm,
     signal_fraction,
 )
+from coaxial_windwall.model import CoaxialAddress, address_from_motor_index, controller_host_indices
 
 
 class SignalGenerationTests(unittest.TestCase):
@@ -48,6 +49,25 @@ class SignalGenerationTests(unittest.TestCase):
 
     def test_zero_fraction_is_idle(self) -> None:
         self.assertEqual(fraction_to_pwm(0.0, 1800), PWM_IDLE)
+
+    def test_excel_grid_and_inverse_address_lookup(self) -> None:
+        expected_top_row = (1, 2, 3, 4, 33, 34, 35, 36)
+        self.assertEqual(
+            tuple(CoaxialAddress(0, col, 0).pixel_number for col in range(8)),
+            expected_top_row,
+        )
+        address = address_from_motor_index(32)
+        self.assertEqual((address.row, address.col, address.label), (0, 4, "F33"))
+
+    def test_controller_positions_stay_fixed_with_new_host_indices(self) -> None:
+        self.assertEqual(
+            controller_host_indices(0),
+            (0, 64, 3, 67, 4, 68, 7, 71),
+        )
+        self.assertEqual(
+            controller_host_indices(4),
+            (32, 96, 35, 99, 36, 100, 39, 103),
+        )
 
 
 if __name__ == "__main__":
