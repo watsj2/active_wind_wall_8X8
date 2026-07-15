@@ -1,0 +1,206 @@
+"""
+Hardware Abstraction Layer for SPI motor control.
+Supports both real Raspberry Pi hardware and mock drivers for development.
+"""
+
+import platform
+import time
+from typing import List, Optional
+import numpy as np
+from config import NUM_MOTORS, SPI_BUS, SPI_DEVICE, SPI_SPEED_HZ, SYNC_PIN
+
+# Physical motor-to-byte mapping based on wiring configuration.
+# Default is identity mapping for NUM_MOTORS motors.
+PHYSICAL_MOTOR_ORDER = list(range(NUM_MOTORS))
+
+class MockSPI:
+    """Mock SPI for development/testing on non-Pi systems."""
+    
+    def __init__(self):
+        self.frame_count = 0
+    
+    def write_bytes(self, data: List[int]) -> None:
+        """Simulate SPI write operation."""
+        self.frame_count += 1
+    
+    def close(self) -> None:
+        pass
+
+class MockGPIO:
+    """Mock GPIO for development/testing on non-Pi systems."""
+    
+    def __init__(self):
+        self.frame_count = 0
+    
+    def toggle_sync_pin(self) -> None:
+        """Simulate GPIO sync pulse."""
+        self.frame_count += 1
+        if self.frame_count % 100 == 0:
+            print(f"[GPIO] Sync pulse {self.frame_count}")
+
+class RealSPI:
+    """Hardware SPI driver for Raspberry Pi (SPI0)."""
+    
+    def __init__(self):
+        import spidev # type: ignore
+        self.spi = spidev.SpiDev()
+        self.spi.open(SPI_BUS, SPI_DEVICE)
+        self.spi.max_speed_hz = SPI_SPEED_HZ
+        self.spi.mode = 0
+        self.spi.bits_per_word = 8
+        print(f"[SPI] Initialized SPI{SPI_BUS}, CE{SPI_DEVICE} (GPIO10=MOSI, GPIO11=SCLK)")
+    
+    def write_bytes(self, data: List[int]) -> None:
+        """Send bytes with enough pacing for the Pico polling loop to drain RX FIFO."""
+        for b in data:
+            self.spi.xfer2([int(b) & 0xFF])
+
+    def close(self) -> None:
+        self.spi.close()
+
+class RealGPIO:
+    """Hardware GPIO driver using gpiod (Raspberry Pi 5)."""
+    
+    def __init__(self, sync_pin: int = SYNC_PIN):
+        import gpiod # type: ignore
+        import time
+        
+        self.gpiod = gpiod
+        self.time = time
+        self.sync_pin = sync_pin
+        self.gpio_chip = '/dev/gpiochip4'  # Pi 5 uses gpiochip4
+        self.legacy_line = None
+        self.line_request = None
+
+        try:
+            from gpiod.line import Direction, Value # type: ignore
+
+            self.Value = Value
+            config = {
+                sync_pin: gpiod.LineSettings(direction=Direction.OUTPUT)
+            }
+            self.line_request = gpiod.request_lines(
+                self.gpio_chip,
+                consumer="wind-wall-control",
+                config=config
+            )
+            self.line_request.set_value(self.sync_pin, Value.INACTIVE)
+        except ImportError:
+            chip = gpiod.Chip(self.gpio_chip)
+            self.legacy_line = chip.get_line(sync_pin)
+            self.legacy_line.request(
+                consumer="wind-wall-control",
+                type=gpiod.LINE_REQ_DIR_OUT,
+                default_vals=[0],
+            )
+
+        print(f"[GPIO] Initialized GPIO {self.sync_pin} (sync pulse)")
+    
+    def toggle_sync_pin(self) -> None:
+        """Send 10µs sync pulse to trigger PWM latch on all Picos."""
+        if self.legacy_line is not None:
+            self.legacy_line.set_value(1)
+            self.time.sleep(0.00001)  # 10 microsecond pulse
+            self.legacy_line.set_value(0)
+        else:
+            self.line_request.set_value(self.sync_pin, self.Value.ACTIVE)
+            self.time.sleep(0.00001)  # 10 microsecond pulse
+            self.line_request.set_value(self.sync_pin, self.Value.INACTIVE)
+
+    def close(self) -> None:
+        if self.legacy_line is not None:
+            self.legacy_line.release()
+
+class HardwareInterface:
+    """
+    Main hardware abstraction layer.
+    
+    Architecture:
+    - SPI broadcast: sends NUM_MOTORS-byte frame to all Picos simultaneously
+    - Sync pulse: triggers atomic PWM update on all Picos
+    - Physical motor remapping: handles wiring configuration
+    """
+    
+    def __init__(self, use_mock: Optional[bool] = None):
+        self.platform = platform.system()
+        
+        # Auto-detect mock mode on macOS, or use explicit setting
+        if use_mock is None:
+            self.use_mock = self.platform == "Darwin"
+        else:
+            self.use_mock = use_mock
+            
+        self.frames_sent = 0
+        
+        self._init_drivers()
+        print(f"[HW] Ready. Mode: {'MOCK' if self.use_mock else 'REAL'}")
+
+    def _init_drivers(self) -> None:
+        """Initialize SPI and GPIO drivers based on platform."""
+        if self.use_mock:
+            print(f"[HW] Using mock drivers ({self.platform})")
+            self.spi = MockSPI()
+            self.gpio = MockGPIO()
+        else:
+            print(f"[HW] Initializing hardware drivers...")
+            try:
+                self.spi = RealSPI()
+                self.gpio = RealGPIO(sync_pin=SYNC_PIN)
+            except Exception as e:
+                print(f"[HW] Hardware init failed: {e}")
+                print(f"[HW] Falling back to mock drivers")
+                self.use_mock = True
+                self.spi = MockSPI()
+                self.gpio = MockGPIO()
+
+    def send_pwm(self, pwm_values: np.ndarray) -> None:
+        """
+        Send PWM values to ALL Picos in one Broadcast Frame.
+        
+        The input pwm_values array is in logical motor order (0..NUM_MOTORS-1).
+        We remap it to physical wiring order before sending.
+        
+        Packet structure: NUM_MOTORS bytes, one per motor in physical order.
+        """
+        self.frames_sent += 1
+        
+        # 1. Reorder motors to match physical wiring configuration
+        reordered_pwm = np.array([pwm_values[i] for i in PHYSICAL_MOTOR_ORDER])
+        
+        # 2. Convert PWM values (1000-2000 us) to byte values (0-255)
+        packet = []
+        for pwm in reordered_pwm:
+            if pwm < 1200:
+                byte_val = 0x00
+            else:
+                clipped = max(1200, min(2000, pwm))
+                byte_val = 1 + int((clipped - 1200) * 254 / 800)
+                byte_val = max(1, min(255, byte_val))
+            packet.append(byte_val)
+
+        # 3. Send via SPI
+        try:
+            self.spi.write_bytes(packet)
+        except Exception as e:
+            print(f"[HW] SPI Write Error: {e}")
+        
+        # 4. Trigger Sync (latches data on all Picos at once)
+        try:
+            self.gpio.toggle_sync_pin()
+        except Exception as e:
+            print(f"[HW] Sync Error: {e}")
+        
+        if self.frames_sent % 400 == 0:
+            print(f"[HW] Frame {self.frames_sent}: Broadcast sent, sync triggered")
+
+    def close(self) -> None:
+        """Cleanup hardware resources."""
+        try:
+            self.spi.close()
+            print("[HW] SPI closed")
+        except:
+            pass
+        try:
+            self.gpio.close()
+        except:
+            pass

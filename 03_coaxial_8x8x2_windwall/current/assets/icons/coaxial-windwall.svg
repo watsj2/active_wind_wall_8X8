@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Coaxial 8x8x2 Windwall">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101722"/>
+      <stop offset="1" stop-color="#1f2937"/>
+    </linearGradient>
+    <linearGradient id="front" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="back" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+    <g id="pair">
+      <circle cx="0" cy="0" r="7" fill="url(#front)"/>
+      <circle cx="6" cy="6" r="5" fill="url(#back)"/>
+    </g>
+  </defs>
+  <rect width="256" height="256" rx="42" fill="url(#bg)"/>
+  <rect x="29" y="29" width="198" height="198" rx="19" fill="#0b1017" stroke="#3a4658" stroke-width="6"/>
+  <g stroke="#253142" stroke-width="3">
+    <path d="M44 66h168M44 88h168M44 110h168M44 132h168M44 154h168M44 176h168M44 198h168"/>
+    <path d="M66 44v168M88 44v168M110 44v168M132 44v168M154 44v168M176 44v168M198 44v168"/>
+  </g>
+  <g>
+    <use href="#pair" x="52" y="52"/><use href="#pair" x="74" y="52"/><use href="#pair" x="96" y="52"/><use href="#pair" x="118" y="52"/><use href="#pair" x="140" y="52"/><use href="#pair" x="162" y="52"/><use href="#pair" x="184" y="52"/><use href="#pair" x="206" y="52"/>
+    <use href="#pair" x="52" y="74"/><use href="#pair" x="74" y="74"/><use href="#pair" x="96" y="74"/><use href="#pair" x="118" y="74"/><use href="#pair" x="140" y="74"/><use href="#pair" x="162" y="74"/><use href="#pair" x="184" y="74"/><use href="#pair" x="206" y="74"/>
+    <use href="#pair" x="52" y="96"/><use href="#pair" x="74" y="96"/><use href="#pair" x="96" y="96"/><use href="#pair" x="118" y="96"/><use href="#pair" x="140" y="96"/><use href="#pair" x="162" y="96"/><use href="#pair" x="184" y="96"/><use href="#pair" x="206" y="96"/>
+    <use href="#pair" x="52" y="118"/><use href="#pair" x="74" y="118"/><use href="#pair" x="96" y="118"/><use href="#pair" x="118" y="118"/><use href="#pair" x="140" y="118"/><use href="#pair" x="162" y="118"/><use href="#pair" x="184" y="118"/><use href="#pair" x="206" y="118"/>
+    <use href="#pair" x="52" y="140"/><use href="#pair" x="74" y="140"/><use href="#pair" x="96" y="140"/><use href="#pair" x="118" y="140"/><use href="#pair" x="140" y="140"/><use href="#pair" x="162" y="140"/><use href="#pair" x="184" y="140"/><use href="#pair" x="206" y="140"/>
+    <use href="#pair" x="52" y="162"/><use href="#pair" x="74" y="162"/><use href="#pair" x="96" y="162"/><use href="#pair" x="118" y="162"/><use href="#pair" x="140" y="162"/><use href="#pair" x="162" y="162"/><use href="#pair" x="184" y="162"/><use href="#pair" x="206" y="162"/>
+    <use href="#pair" x="52" y="184"/><use href="#pair" x="74" y="184"/><use href="#pair" x="96" y="184"/><use href="#pair" x="118" y="184"/><use href="#pair" x="140" y="184"/><use href="#pair" x="162" y="184"/><use href="#pair" x="184" y="184"/><use href="#pair" x="206" y="184"/>
+    <use href="#pair" x="52" y="206"/><use href="#pair" x="74" y="206"/><use href="#pair" x="96" y="206"/><use href="#pair" x="118" y="206"/><use href="#pair" x="140" y="206"/><use href="#pair" x="162" y="206"/><use href="#pair" x="184" y="206"/><use href="#pair" x="206" y="206"/>
+  </g>
+  <path d="M42 224c26 15 58 15 88 0s64-15 84 0" fill="none" stroke="#8fb3ff" stroke-width="7" stroke-linecap="round"/>
+</svg>

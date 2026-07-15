@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Active Wind Wall GUI
+Comment=Launch the Active Wind Wall control interface
+Exec=bash -lc 'cd /home/jwatson/active_wind_wall_8X8 && PYTHONPATH=/home/jwatson/active_wind_wall_8X8/venv/lib/python3.11/site-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages QT_QPA_PLATFORM=xcb python3 gui_interface.py'
+Path=/home/jwatson/active_wind_wall_8X8
+Terminal=false
+Categories=Utility;

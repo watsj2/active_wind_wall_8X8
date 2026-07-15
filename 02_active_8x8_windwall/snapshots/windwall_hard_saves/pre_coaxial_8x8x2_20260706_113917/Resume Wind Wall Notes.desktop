@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Resume Wind Wall Notes
+Comment=Open the latest local session notes for the wind wall project
+Exec=mousepad /home/jwatson/Desktop/Wind\ Wall\ Session\ Notes.md
+Path=/home/jwatson/Desktop
+Terminal=false
+Categories=Utility;

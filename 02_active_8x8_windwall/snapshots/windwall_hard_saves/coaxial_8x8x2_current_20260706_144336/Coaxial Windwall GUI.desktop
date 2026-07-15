@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Coaxial Windwall GUI
+Comment=Launch the Coaxial 8x8x2 Windwall control GUI
+Exec=/home/jwatson/coaxial_8x8x2_windwall_system/scripts/launch_gui.sh
+Icon=/home/jwatson/coaxial_8x8x2_windwall_system/assets/icons/coaxial-windwall.svg
+Path=/home/jwatson/coaxial_8x8x2_windwall_system
+Terminal=false
+Categories=Utility;

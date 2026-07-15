@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Active Wind Wall GUI
+Comment=Launch the Active Wind Wall control interface
+Exec=/home/jwatson/active_wind_wall_8X8/scripts/launch_gui.sh
+Path=/home/jwatson/active_wind_wall_8X8
+Icon=/home/jwatson/active_wind_wall_8X8/assets/icons/active-wind-wall.svg
+Terminal=false
+StartupNotify=true
+Categories=Utility;

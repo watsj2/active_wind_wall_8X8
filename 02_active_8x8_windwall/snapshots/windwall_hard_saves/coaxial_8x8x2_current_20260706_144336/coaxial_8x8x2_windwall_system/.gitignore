@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+logs/*.csv
+logs/*.xlsx
+*.uf2
+*.elf
+*.bin
+*.hex
+*.map
+build*/
+.pytest_cache/

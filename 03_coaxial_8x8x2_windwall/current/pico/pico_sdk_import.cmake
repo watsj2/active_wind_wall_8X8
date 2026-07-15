@@ -1,0 +1,7 @@
+if(DEFINED ENV{PICO_SDK_PATH} AND EXISTS "$ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake")
+    include("$ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake")
+elseif(EXISTS "/home/jwatson/pico-sdk/external/pico_sdk_import.cmake")
+    include("/home/jwatson/pico-sdk/external/pico_sdk_import.cmake")
+else()
+    message(FATAL_ERROR "Set PICO_SDK_PATH or install the Pico SDK at /home/jwatson/pico-sdk")
+endif()

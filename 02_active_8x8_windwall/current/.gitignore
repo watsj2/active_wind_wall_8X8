@@ -1,0 +1,7 @@
+/logs
+/tests
+/pico/build*/
+**/__pycache__/
+*.pyc
+.venv/
+.env
