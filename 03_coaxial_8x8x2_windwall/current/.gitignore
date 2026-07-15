@@ -6,6 +6,7 @@ venv/
 .codex/
 logs/*.csv
 logs/*.xlsx
+config/gui_presets.json
 *.uf2
 !pico/firmware_c*.uf2
 *.elf

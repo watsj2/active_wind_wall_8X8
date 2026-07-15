@@ -40,14 +40,14 @@ class HardwareInterface:
     def mode_name(self) -> str:
         return "MOCK" if self.use_mock else "REAL"
 
-    def send_pwm_frame(self, values: list[int]) -> None:
+    def send_pwm_frame(self, values: list[int], *, output_armed: bool = False) -> None:
         frame = validate_pwm_frame(values)
         self.frame_count += 1
         self.last_frame = frame
         self.last_protocol_frame = build_pwm_us_frame(
             frame,
             sequence=self.frame_count,
-            output_armed=False,
+            output_armed=output_armed,
         )
         self.last_send_time_s = monotonic()
 
@@ -60,4 +60,4 @@ class HardwareInterface:
         )
 
     def shutdown(self) -> None:
-        self.send_pwm_frame([1000] * NUM_MOTORS)
+        self.send_pwm_frame([1000] * NUM_MOTORS, output_armed=False)

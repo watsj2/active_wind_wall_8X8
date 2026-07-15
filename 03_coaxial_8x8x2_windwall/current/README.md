@@ -16,29 +16,30 @@ system. The old system was hard-saved before this project was created.
 
 ## Current Status
 
-This is the first clean baseline:
+The control interface is a direct 8x8x2 extrapolation of the original German
+6x6 group-and-signal workflow:
 
 - New project files
 - New 128-motor addressing model
 - New mock-safe hardware interface
-- New PyQt6 GUI for the coaxial grid
+- German-derived PyQt6 experiment GUI for the coaxial grid
 - Dark-mode operator interface
-- Explicit output arming and one-path emergency stop (`Esc`)
-- Front/back activity metrics and selected-pair controller/channel inspector
-- C01-C16 wall highlighting for wiring and bench checks
-- Explicit PWM range and preset controls
-- Timed test runner with entered PWM speed and duration
-- Editable wind-pixel groups with front/back/both layer scope
-- Saved preset tests as reusable 128-motor PWM frames
+- Per-group sine, square, constant, and custom Fourier signals
+- Front, back, or paired motor-group assignment on the 8x8 wall
+- Timed experiments with explicit arm, stop, auto-disarm, and emergency stop
+- Live selected-motor, selected-group, and wall-average PWM monitor
+- JSON group/signal preset save and load
+- Selected-pair controller/channel inspector and C01-C16 highlighting
 - Lightweight painted pixel bars tuned for Raspberry Pi use
 - Final row-major motor numbering with harness-preserving controller mapping
 - Color-coded 8x8x2 Pico/controller mapping image
 - Defined v1 host-to-controller PWM protocol
 - Built C01-C16 Pico UF2 firmware images for the current mapping
-- No inherited telemetry, Testo map, or monitor complexity
+- No inherited Testo or unverified telemetry path
 
-Real motor output uses the v1 host-to-controller protocol and the per-controller
-UF2 firmware images under `pico/`.
+The GUI rewrite did not change the motor map, controller map, v1 protocol, or
+C01-C16 UF2 firmware. Real hardware transport remains deliberately disabled in
+the host interface pending bench validation.
 
 ## Motor Mapping
 
@@ -95,20 +96,20 @@ pico/firmware_c16.uf2
 
 ## GUI Tools
 
-The GUI opens disarmed. Check `Arm output` before starting continuous commands,
-sending a one-shot active frame, or running a timed test. `EMERGENCY STOP` and
-the `Esc` key both stop the command loop, send idle, clear the prepared frame,
-and disarm output.
+The GUI follows the German wall's operating sequence:
 
-- `Command`: build direct PWM commands from profiles, PWM ranges, presets, and
-  selected pixels.
-- `Groups`: create named pixel groups, choose whether they target front, back,
-  or both coaxial layers, then apply the current PWM to that group.
-- `Tests`: apply built-in tests or save the current 128-motor frame as a named
-  preset test. Enter `Test Speed PWM` and `Duration`, then run a timed test that
-  idles automatically when the timer expires.
+1. Create or select a motor group.
+2. Choose front, back, or both layers and assign wind pixels on the grid.
+3. Configure that group's waveform, amplitude limits, period, phase, and any
+   custom Fourier harmonics.
+4. Set experiment duration and output ceiling.
+5. Arm the wall and start the timed experiment.
+6. Observe the PWM trace; stop normally or use `EMERGENCY STOP` / `Esc`.
 
-User-created groups and saved tests are stored in `config/gui_presets.json`.
+Runtime session state is stored locally in `config/gui_presets.json` and is
+ignored by Git. Named presets can be saved to or loaded from any JSON file.
+The derivation and frozen-interface rules are documented in
+`docs/GERMAN_GUI_EXTRAPOLATION.md`.
 
 ## Display Performance
 
@@ -136,6 +137,7 @@ or:
 ```bash
 python3 -m py_compile main.py config/__init__.py coaxial_windwall/*.py coaxial_windwall/*/*.py
 python3 scripts/generate_motor_mapping.py --check
+python3 -m unittest discover -s tests -v
 python3 main.py --smoke-test
 ```
 
