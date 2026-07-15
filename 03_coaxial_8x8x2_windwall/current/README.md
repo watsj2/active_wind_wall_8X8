@@ -23,6 +23,9 @@ This is the first clean baseline:
 - New mock-safe hardware interface
 - New PyQt6 GUI for the coaxial grid
 - Dark-mode operator interface
+- Explicit output arming and one-path emergency stop (`Esc`)
+- Front/back activity metrics and selected-pair controller/channel inspector
+- C01-C16 wall highlighting for wiring and bench checks
 - Explicit PWM range and preset controls
 - Timed test runner with entered PWM speed and duration
 - Editable wind-pixel groups with front/back/both layer scope
@@ -91,6 +94,11 @@ pico/firmware_c16.uf2
 ```
 
 ## GUI Tools
+
+The GUI opens disarmed. Check `Arm output` before starting continuous commands,
+sending a one-shot active frame, or running a timed test. `EMERGENCY STOP` and
+the `Esc` key both stop the command loop, send idle, clear the prepared frame,
+and disarm output.
 
 - `Command`: build direct PWM commands from profiles, PWM ranges, presets, and
   selected pixels.

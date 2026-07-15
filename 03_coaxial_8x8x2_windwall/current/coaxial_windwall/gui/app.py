@@ -9,9 +9,10 @@ from dataclasses import dataclass, field
 from statistics import mean
 
 from PyQt6.QtCore import QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen
+from PyQt6.QtGui import QColor, QFont, QKeySequence, QPainter, QPen, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QFrame,
     QGridLayout,
@@ -82,6 +83,16 @@ QLabel#Status {
     padding: 7px 10px;
     font-weight: 800;
 }
+QLabel#Status[running="true"] {
+    background: #12351f;
+    color: #86efac;
+    border-color: #238249;
+}
+QLabel#Status[armed="true"] {
+    background: #3b2b0c;
+    color: #fcd34d;
+    border-color: #a16207;
+}
 QLabel#Timer {
     background: #101722;
     color: #f8fafc;
@@ -95,6 +106,10 @@ QFrame#Panel {
     background: #111823;
     border: 1px solid #2a3443;
     border-radius: 6px;
+}
+QFrame#SelectedInspector {
+    background: #0d1420;
+    border-top: 1px solid #2a3443;
 }
 QLabel#PanelTitle {
     color: #f8fafc;
@@ -131,6 +146,30 @@ QPushButton#StopButton {
     background: #b91c1c;
     border-color: #b91c1c;
     color: #ffffff;
+}
+QPushButton#StopButton:hover {
+    background: #dc2626;
+}
+QCheckBox {
+    color: #d7dee9;
+    spacing: 8px;
+    font-weight: 700;
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    background: #0d1420;
+    border: 1px solid #475569;
+    border-radius: 4px;
+}
+QCheckBox::indicator:checked {
+    background: #d97706;
+    border-color: #f59e0b;
+}
+QLabel#InspectorValue {
+    color: #e5edf7;
+    font-size: 12px;
+    font-weight: 800;
 }
 QComboBox, QSpinBox {
     background: #0d1420;
@@ -331,6 +370,7 @@ class PixelCell(QFrame):
         self.location_label = f"R{row + 1}C{col + 1}"
         self.selected = False
         self.in_group = False
+        self.controller_focus = False
         self.layer_a_pwm = PWM_IDLE
         self.layer_b_pwm = PWM_IDLE
         self.minimum_pwm = PWM_MIN
@@ -352,6 +392,11 @@ class PixelCell(QFrame):
     def set_in_group(self, in_group: bool) -> None:
         if self.in_group != in_group:
             self.in_group = in_group
+            self.update()
+
+    def set_controller_focus(self, focused: bool) -> None:
+        if self.controller_focus != focused:
+            self.controller_focus = focused
             self.update()
 
     def set_pwm(self, layer_a: int, layer_b: int) -> None:
@@ -377,6 +422,8 @@ class PixelCell(QFrame):
         border = QColor("#3b82f6" if self.selected else "#2c3848")
         if self.in_group and not self.selected:
             border = QColor("#14b8a6")
+        if self.controller_focus and not self.selected:
+            border = QColor("#a78bfa")
         painter.setPen(QPen(border, 2 if self.selected else 1))
         painter.setBrush(fill)
         painter.drawRoundedRect(QRectF(rect), 5, 5)
@@ -438,6 +485,7 @@ class CoaxialWindwallWindow(QMainWindow):
         self.hardware = HardwareInterface(use_mock=True)
         self.current_pwm = idle_frame()
         self.running = False
+        self.output_armed = False
         self.selected_row = 0
         self.selected_col = 0
         self.cells: dict[tuple[int, int], PixelCell] = {}
@@ -468,6 +516,8 @@ class CoaxialWindwallWindow(QMainWindow):
 
         self.setStyleSheet(APP_STYLESHEET)
         self.setCentralWidget(self.build_ui())
+        self.emergency_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self.emergency_shortcut.activated.connect(self.emergency_stop)
         self.apply_profile()
         self.mark_view_dirty()
 
@@ -510,14 +560,20 @@ class CoaxialWindwallWindow(QMainWindow):
         self.timer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.timer_label)
 
+        self.arm_checkbox = QCheckBox("Arm output")
+        self.arm_checkbox.setToolTip("Required before commands can be started or sent")
+        self.arm_checkbox.toggled.connect(self.set_output_armed)
+        layout.addWidget(self.arm_checkbox)
+
         self.start_button = QPushButton("Start")
         self.start_button.setObjectName("PrimaryButton")
         self.start_button.clicked.connect(self.start_commands)
         layout.addWidget(self.start_button)
 
-        self.stop_button = QPushButton("Stop")
+        self.stop_button = QPushButton("EMERGENCY STOP")
         self.stop_button.setObjectName("StopButton")
-        self.stop_button.clicked.connect(self.stop_commands)
+        self.stop_button.setToolTip("Immediately idle all outputs (Esc)")
+        self.stop_button.clicked.connect(self.emergency_stop)
         layout.addWidget(self.stop_button)
 
         self.idle_button = QPushButton("Idle")
@@ -545,6 +601,13 @@ class CoaxialWindwallWindow(QMainWindow):
         legend_b = QLabel(f"{LAYER_NAMES[1]} / {LAYER_LABELS[1]} amber")
         legend_b.setObjectName("MetricLabel")
         header.addWidget(legend_b)
+        self.controller_focus_combo = QComboBox()
+        self.controller_focus_combo.addItem("All controllers", None)
+        for controller in range(1, 17):
+            self.controller_focus_combo.addItem(f"C{controller:02d}", controller - 1)
+        self.controller_focus_combo.setToolTip("Highlight pixels wired to one controller")
+        self.controller_focus_combo.currentIndexChanged.connect(self.mark_view_dirty)
+        header.addWidget(self.controller_focus_combo)
         layout.addLayout(header)
 
         grid = QGridLayout()
@@ -580,7 +643,35 @@ class CoaxialWindwallWindow(QMainWindow):
         tabs.addTab(self.build_groups_tab(), "Groups")
         tabs.addTab(self.build_tests_tab(), "Tests")
         layout.addWidget(tabs, stretch=1)
+        layout.addWidget(self.build_selected_inspector())
         return panel
+
+    def build_selected_inspector(self) -> QFrame:
+        inspector = QFrame()
+        inspector.setObjectName("SelectedInspector")
+        layout = QGridLayout(inspector)
+        layout.setContentsMargins(10, 9, 10, 9)
+        layout.setHorizontalSpacing(12)
+        layout.setVerticalSpacing(4)
+        title = QLabel("Selected Pair")
+        title.setObjectName("PanelTitle")
+        layout.addWidget(title, 0, 0, 1, 2)
+        self.inspector_pair = self.add_inspector_row(layout, 1, "Pixel", "P01 / R1C1")
+        self.inspector_front = self.add_inspector_row(layout, 2, "Front", "F01  C01 CH1")
+        self.inspector_back = self.add_inspector_row(layout, 3, "Back", "B01  C01 CH2")
+        return inspector
+
+    def add_inspector_row(
+        self, layout: QGridLayout, row: int, label_text: str, value_text: str
+    ) -> QLabel:
+        label = QLabel(label_text)
+        label.setObjectName("MetricLabel")
+        value = QLabel(value_text)
+        value.setObjectName("InspectorValue")
+        value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        layout.addWidget(label, row, 0)
+        layout.addWidget(value, row, 1)
+        return value
 
     def build_command_tab(self) -> QWidget:
         tab = QWidget()
@@ -750,6 +841,8 @@ class CoaxialWindwallWindow(QMainWindow):
         layout.setSpacing(24)
 
         self.metric_active = self.add_metric(layout, "Active Motors", "0")
+        self.metric_front = self.add_metric(layout, "Front Active", "0 / 64")
+        self.metric_back = self.add_metric(layout, "Back Active", "0 / 64")
         self.metric_average = self.add_metric(layout, "Average PWM", "1000")
         self.metric_peak = self.add_metric(layout, "Peak PWM", "1000")
         self.metric_frames = self.add_metric(layout, "Frames Sent", "0")
@@ -1103,6 +1196,9 @@ class CoaxialWindwallWindow(QMainWindow):
         self.set_current_pwm(self.selected_test_frame())
 
     def run_timed_test(self) -> None:
+        if not self.output_armed:
+            self.status_label.setText("ARM OUTPUT TO RUN TEST")
+            return
         pwm = self.test_speed_spin.value()
         duration_s = self.test_duration_spin.value()
         self.base_slider.setValue(pwm)
@@ -1245,7 +1341,19 @@ class CoaxialWindwallWindow(QMainWindow):
         self.set_current_pwm(idle_frame())
         self.send_current_frame()
 
+    def set_output_armed(self, armed: bool) -> None:
+        self.output_armed = bool(armed)
+        if not self.output_armed and self.running:
+            self.stop_commands()
+        self.refresh_status()
+
+    def can_send_active_frame(self) -> bool:
+        return self.output_armed or all(value == PWM_IDLE for value in self.current_pwm)
+
     def start_commands(self) -> None:
+        if not self.output_armed:
+            self.status_label.setText("ARM OUTPUT TO START")
+            return
         self.running = True
         self.run_started_s = time.monotonic()
         self.last_run_elapsed_s = 0.0
@@ -1268,13 +1376,26 @@ class CoaxialWindwallWindow(QMainWindow):
         self.update_run_timer()
         self.refresh_status()
 
+    def emergency_stop(self) -> None:
+        self.stop_commands()
+        self.output_armed = False
+        if hasattr(self, "arm_checkbox"):
+            self.arm_checkbox.blockSignals(True)
+            self.arm_checkbox.setChecked(False)
+            self.arm_checkbox.blockSignals(False)
+        self.refresh_status()
+
     def send_current_frame(self) -> None:
+        if not self.can_send_active_frame():
+            self.status_label.setText("ARM OUTPUT TO SEND")
+            return
         self.hardware.send_pwm_frame(self.current_pwm)
         self.refresh_metrics()
 
     def refresh_view(self) -> None:
         group = self.active_group()
         group_pixels = group.pixels if group is not None else set()
+        focused_controller = self.controller_focus_combo.currentData()
         for row in range(GRID_ROWS):
             for col in range(GRID_COLS):
                 idx_a = CoaxialAddress(row, col, 0).motor_index
@@ -1282,6 +1403,11 @@ class CoaxialWindwallWindow(QMainWindow):
                 cell = self.cells[(row, col)]
                 cell.set_pwm(self.current_pwm[idx_a], self.current_pwm[idx_b])
                 cell.set_in_group((row, col) in group_pixels)
+                controller_match = focused_controller is not None and (
+                    CoaxialAddress(row, col, 0).controller_index == focused_controller
+                    or CoaxialAddress(row, col, 1).controller_index == focused_controller
+                )
+                cell.set_controller_focus(controller_match)
                 cell.set_selected(row == self.selected_row and col == self.selected_col)
         self.view_dirty = False
         self.refresh_metrics()
@@ -1291,17 +1417,38 @@ class CoaxialWindwallWindow(QMainWindow):
         if not hasattr(self, "metric_active"):
             return
         active = sum(1 for value in self.current_pwm if value > PWM_IDLE)
+        front_active = sum(1 for value in self.current_pwm[:64] if value > PWM_IDLE)
+        back_active = sum(1 for value in self.current_pwm[64:] if value > PWM_IDLE)
         self.metric_active.setText(f"{active} / {NUM_MOTORS}")
+        self.metric_front.setText(f"{front_active} / 64")
+        self.metric_back.setText(f"{back_active} / 64")
         self.metric_average.setText(f"{mean(self.current_pwm):.0f}")
         self.metric_peak.setText(str(max(self.current_pwm)))
         self.metric_frames.setText(str(self.hardware.frame_count))
         self.metric_runtime.setText(self.format_duration(self.elapsed_run_seconds()))
         address = CoaxialAddress(self.selected_row, self.selected_col, 0)
         self.metric_selected.setText(address.pair_label)
+        front = address
+        back = CoaxialAddress(self.selected_row, self.selected_col, 1)
+        self.inspector_pair.setText(f"{front.pair_label} / R{front.row + 1}C{front.col + 1}")
+        self.inspector_front.setText(
+            f"{front.label}  {front.controller_label} {front.controller_channel_label}  {self.current_pwm[front.motor_index]} us"
+        )
+        self.inspector_back.setText(
+            f"{back.label}  {back.controller_label} {back.controller_channel_label}  {self.current_pwm[back.motor_index]} us"
+        )
 
     def refresh_status(self) -> None:
         mode = "RUNNING" if self.running else "IDLE"
-        self.status_label.setText(f"{mode} / {self.hardware.mode_name}")
+        armed = self.output_armed and not self.running
+        self.status_label.setProperty("running", self.running)
+        self.status_label.setProperty("armed", armed)
+        self.status_label.style().unpolish(self.status_label)
+        self.status_label.style().polish(self.status_label)
+        state = mode if self.running else ("ARMED" if armed else "IDLE")
+        self.status_label.setText(f"{state} / {self.hardware.mode_name}")
+        self.start_button.setEnabled(self.output_armed and not self.running)
+        self.send_once_button.setEnabled(self.output_armed)
 
     def closeEvent(self, event) -> None:  # noqa: N802
         self.command_timer.stop()
