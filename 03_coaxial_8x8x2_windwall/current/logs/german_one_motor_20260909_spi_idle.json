@@ -1,0 +1,10 @@
+{
+  "firmware": "german-one-motor-v1",
+  "board": "F68B8438147951D7",
+  "host_sent_frames": 20,
+  "host_sent_bytes": 720,
+  "host_sync_pulses": 20,
+  "before": {"bytes": 0, "syncs": 0, "valid": 0, "invalid": 0, "last_length": 0},
+  "after": {"bytes": 0, "syncs": 20, "valid": 0, "invalid": 20, "last_length": 0},
+  "result": "sync reaches C01; SPI bytes do not"
+}

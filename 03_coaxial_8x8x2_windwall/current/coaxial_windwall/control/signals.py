@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Iterable
 
-from config import NUM_MOTORS, PWM_IDLE, PWM_UI_MAX
+from config import NUM_MOTORS, PWM_IDLE, PWM_MAX, PWM_UI_MAX
 from coaxial_windwall.model import clamp_pwm
 
 
@@ -45,6 +45,7 @@ class GroupSignal:
     minimum: float = 0.25
     maximum: float = 0.75
     constant: float = 0.50
+    constant_pwm_us: int | None = None
     period_s: float = 2.0
     phase_s: float = 0.0
     duty_cycle: float = 0.50
@@ -54,11 +55,19 @@ class GroupSignal:
         signal_type = self.signal_type if self.signal_type in SIGNAL_TYPES else SIGNAL_SINE
         minimum = max(0.0, min(1.0, float(self.minimum)))
         maximum = max(minimum, min(1.0, float(self.maximum)))
+        constant = max(0.0, min(1.0, float(self.constant)))
+        constant_pwm_us = self.constant_pwm_us
+        if constant_pwm_us is None:
+            constant_pwm_us = round(
+                PWM_IDLE + constant * (PWM_UI_MAX - PWM_IDLE)
+            )
+        constant_pwm_us = max(PWM_IDLE, min(PWM_MAX, int(round(constant_pwm_us))))
         return GroupSignal(
             signal_type=signal_type,
             minimum=minimum,
             maximum=maximum,
-            constant=max(0.0, min(1.0, float(self.constant))),
+            constant=constant,
+            constant_pwm_us=constant_pwm_us,
             period_s=max(0.1, float(self.period_s)),
             phase_s=float(self.phase_s),
             duty_cycle=max(0.01, min(0.99, float(self.duty_cycle))),
@@ -66,11 +75,13 @@ class GroupSignal:
         )
 
     def to_dict(self) -> dict:
+        normalized = self.normalized()
         return {
             "signal_type": self.signal_type,
             "minimum": self.minimum,
             "maximum": self.maximum,
             "constant": self.constant,
+            "constant_pwm_us": normalized.constant_pwm_us,
             "period_s": self.period_s,
             "phase_s": self.phase_s,
             "duty_cycle": self.duty_cycle,
@@ -84,6 +95,11 @@ class GroupSignal:
             minimum=float(data.get("minimum", data.get("amp_min", 0.25))),
             maximum=float(data.get("maximum", data.get("amp_max", 0.75))),
             constant=float(data.get("constant", data.get("dc_value", 0.50))),
+            constant_pwm_us=(
+                int(round(float(data["constant_pwm_us"])))
+                if data.get("constant_pwm_us") is not None
+                else None
+            ),
             period_s=float(data.get("period_s", data.get("period", 2.0))),
             phase_s=float(data.get("phase_s", data.get("phase_offset", 0.0))),
             duty_cycle=float(data.get("duty_cycle", 0.50)),
@@ -159,6 +175,20 @@ def fraction_to_pwm(fraction: float, output_max: int = PWM_UI_MAX) -> int:
     return clamp_pwm(PWM_IDLE + fraction * (output_max - PWM_IDLE))
 
 
+def signal_pwm(
+    signal: GroupSignal,
+    elapsed_s: float,
+    output_max: int = PWM_UI_MAX,
+) -> int:
+    """Evaluate a signal as an exact PWM command in microseconds."""
+
+    cfg = signal.normalized()
+    ceiling = max(PWM_IDLE, min(PWM_MAX, int(round(output_max))))
+    if cfg.signal_type == SIGNAL_CONSTANT:
+        return min(int(cfg.constant_pwm_us or PWM_IDLE), ceiling)
+    return fraction_to_pwm(signal_fraction(cfg, elapsed_s), ceiling)
+
+
 def build_group_frame(
     groups: Iterable[SignalGroup],
     elapsed_s: float,
@@ -168,7 +198,7 @@ def build_group_frame(
 
     frame = [PWM_IDLE] * NUM_MOTORS
     for group in groups:
-        pwm = fraction_to_pwm(signal_fraction(group.signal, elapsed_s), output_max)
+        pwm = signal_pwm(group.signal, elapsed_s, output_max)
         for motor_index in group.motors:
             if 0 <= motor_index < NUM_MOTORS:
                 frame[motor_index] = pwm
@@ -187,8 +217,9 @@ def preview_signal(
     return [
         (
             duration_s * index / (sample_count - 1),
-            fraction_to_pwm(
-                signal_fraction(signal, duration_s * index / (sample_count - 1)),
+            signal_pwm(
+                signal,
+                duration_s * index / (sample_count - 1),
                 output_max,
             ),
         )

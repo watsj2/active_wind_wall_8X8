@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from pathlib import Path
+from threading import Condition, Thread
 from time import monotonic
 from typing import Protocol, Sequence
 
 from config import (
-    DEFAULT_HARDWARE_MODE,
-    GPIO_CHIP_PATH,
+    GPIO_CHIP_LABEL,
     NUM_MOTORS,
     PWM_IDLE,
     SPI_BUS,
@@ -66,10 +67,11 @@ class RealSync:
     def __init__(
         self,
         pin: int = SYNC_PIN,
-        chip_path: str = GPIO_CHIP_PATH,
+        chip_label: str = GPIO_CHIP_LABEL,
     ) -> None:
         import gpiod  # type: ignore
 
+        chip_path = self._find_chip_path(gpiod, chip_label)
         self._pin = pin
         self._line_request = None
         self._line = None
@@ -94,6 +96,27 @@ class RealSync:
                 type=gpiod.LINE_REQ_DIR_OUT,
                 default_vals=[0],
             )
+
+    @staticmethod
+    def _find_chip_path(gpiod_module, chip_label: str) -> str:
+        for candidate in sorted(Path("/dev").glob("gpiochip*")):
+            chip = None
+            try:
+                chip = gpiod_module.Chip(str(candidate))
+                if hasattr(chip, "get_info"):
+                    label = chip.get_info().label
+                else:
+                    label = chip.label()
+                if label == chip_label:
+                    return str(candidate)
+            except OSError:
+                continue
+            finally:
+                if chip is not None:
+                    chip.close()
+        raise FileNotFoundError(
+            f"GPIO chip with label {chip_label!r} was not found under /dev"
+        )
 
     def pulse(self) -> None:
         if self._line is not None:
@@ -132,14 +155,12 @@ class HardwareInterface:
 
     def __init__(
         self,
-        use_mock: bool | None = None,
         *,
         spi: SPITransport | None = None,
         sync: SyncTransport | None = None,
     ) -> None:
-        if use_mock is None:
-            use_mock = DEFAULT_HARDWARE_MODE != "real"
-        self.use_mock = bool(use_mock)
+        if (spi is None) != (sync is None):
+            raise ValueError("spi and sync test transports must be supplied together")
         self.frame_count = 0
         self.last_frame = [PWM_IDLE] * NUM_MOTORS
         self.last_protocol_frame = build_idle_frame(sequence=0)
@@ -148,18 +169,13 @@ class HardwareInterface:
         self._sync: SyncTransport | None = None
         self._closed = False
 
-        if not self.use_mock:
-            try:
-                self._spi = spi if spi is not None else RealSPI()
-                self._sync = sync if sync is not None else RealSync()
-                self.send_pwm_frame(self.last_frame, output_armed=False)
-            except Exception:
-                self.close()
-                raise
-
-    @property
-    def mode_name(self) -> str:
-        return "MOCK" if self.use_mock else "REAL"
+        try:
+            self._spi = spi if spi is not None else RealSPI()
+            self._sync = sync if sync is not None else RealSync()
+            self.send_pwm_frame(self.last_frame, output_armed=False)
+        except Exception:
+            self.close()
+            raise
 
     def send_pwm_frame(
         self,
@@ -177,11 +193,10 @@ class HardwareInterface:
             output_armed=output_armed,
         )
 
-        if not self.use_mock:
-            if self._spi is None or self._sync is None:
-                raise RuntimeError("real transport is not initialized")
-            self._spi.write_frame(protocol_frame)
-            self._sync.pulse()
+        if self._spi is None or self._sync is None:
+            raise RuntimeError("real transport is not initialized")
+        self._spi.write_frame(protocol_frame)
+        self._sync.pulse()
 
         self.frame_count += 1
         self.last_frame = frame
@@ -214,3 +229,96 @@ class HardwareInterface:
         if self._spi is not None:
             self._spi.close()
             self._spi = None
+
+
+class LatestFrameDispatcher:
+    """Send only the newest queued runtime frame outside the GUI thread.
+
+    The physical transport deliberately performs one SPI transaction per byte.
+    Keeping those 266 transactions off the Qt event loop prevents motor traffic
+    from freezing painting and input.  The queue is bounded to one frame so a
+    slow transport never replays stale motor commands.
+    """
+
+    def __init__(self, hardware: HardwareInterface) -> None:
+        self._hardware = hardware
+        self._condition = Condition()
+        self._pending: tuple[tuple[int, ...], bool] | None = None
+        self._active = False
+        self._closed = False
+        self._failure: Exception | None = None
+        self._thread = Thread(
+            target=self._run,
+            name="windwall-frame-dispatch",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def submit(
+        self,
+        values: Sequence[int | float],
+        *,
+        output_armed: bool,
+    ) -> bool:
+        """Queue the newest frame and return false if dispatch has failed."""
+
+        frame = tuple(validate_pwm_frame(values))
+        with self._condition:
+            if self._closed or self._failure is not None:
+                return False
+            self._pending = (frame, output_armed)
+            self._condition.notify()
+        return True
+
+    def discard_pending(self) -> None:
+        with self._condition:
+            self._pending = None
+
+    def wait_until_idle(self, timeout_s: float = 1.0) -> bool:
+        deadline = monotonic() + timeout_s
+        with self._condition:
+            while self._active or self._pending is not None:
+                remaining = deadline - monotonic()
+                if remaining <= 0:
+                    return False
+                self._condition.wait(remaining)
+        return True
+
+    def failure(self) -> Exception | None:
+        with self._condition:
+            return self._failure
+
+    def close(self, timeout_s: float = 1.0) -> bool:
+        with self._condition:
+            self._pending = None
+            self._closed = True
+            self._condition.notify()
+        self._thread.join(timeout_s)
+        return not self._thread.is_alive()
+
+    def _run(self) -> None:
+        while True:
+            with self._condition:
+                while self._pending is None and not self._closed:
+                    self._condition.wait()
+                if self._closed:
+                    return
+                request = self._pending
+                self._pending = None
+                self._active = True
+
+            try:
+                if request is not None:
+                    values, output_armed = request
+                    self._hardware.send_pwm_frame(
+                        values,
+                        output_armed=output_armed,
+                    )
+            except Exception as exc:  # surfaced to the GUI on its next tick
+                with self._condition:
+                    self._failure = exc
+                    self._pending = None
+            finally:
+                with self._condition:
+                    self._active = False
+                    self._condition.notify_all()

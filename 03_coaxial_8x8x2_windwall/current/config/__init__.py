@@ -27,12 +27,6 @@ PWM_DEFAULT = 1300
 PWM_UI_MAX = 1800
 PWM_MAX = 2000
 
-PWM_RANGE_PRESETS = (
-    ("Safe 1000-1400", 1000, 1400),
-    ("Test 1000-1800", 1000, 1800),
-    ("Full 1000-2000", 1000, 2000),
-)
-
 PWM_PRESETS = (
     ("Idle", 1000),
     ("Safe Start", 1150),
@@ -52,6 +46,4 @@ SPI_BUS = 0
 SPI_DEVICE = 0
 SPI_SPEED_HZ = 1_000_000
 SYNC_PIN = 22
-GPIO_CHIP_PATH = "/dev/gpiochip4"
-
-DEFAULT_HARDWARE_MODE = "real"
+GPIO_CHIP_LABEL = "pinctrl-rp1"

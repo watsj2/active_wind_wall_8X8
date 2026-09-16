@@ -1,0 +1,77 @@
+[
+  {
+    "time": 1788981719.083479,
+    "stage": "connected",
+    "result": {
+      "firmware": "german-one-motor-v1",
+      "board": "F68B8438147951D7",
+      "pwm_us": 1000,
+      "armed": 0,
+      "direct": 0,
+      "bytes": 152152,
+      "syncs": 581,
+      "valid": 0,
+      "invalid": 581,
+      "last_length": 0,
+      "raw": 0,
+      "overflow": 572,
+      "overrun": 0,
+      "collisions": 1,
+      "timeouts": 0,
+      "limits": 0,
+      "ce0": 1,
+      "sync_level": 0
+    }
+  },
+  {
+    "time": 1788981719.0874627,
+    "stage": "identity",
+    "result": {
+      "firmware": "german-one-motor-v1",
+      "board": "F68B8438147951D7",
+      "pwm_us": 1000,
+      "armed": 0,
+      "direct": 0,
+      "bytes": 152152,
+      "syncs": 581,
+      "valid": 0,
+      "invalid": 581,
+      "last_length": 0,
+      "raw": 0,
+      "overflow": 572,
+      "overrun": 0,
+      "collisions": 1,
+      "timeouts": 0,
+      "limits": 0,
+      "ce0": 1,
+      "sync_level": 0
+    }
+  },
+  {
+    "time": 1788981719.6878333,
+    "stage": "boot_idle",
+    "result": {
+      "target_us": 1000,
+      "samples": 0,
+      "matching": 0,
+      "median_us": null,
+      "min_us": null,
+      "max_us": null,
+      "frequency_hz": null,
+      "malformed": 0,
+      "pass": false
+    }
+  },
+  {
+    "time": 1788981719.6879709,
+    "stage": "error",
+    "result": "boot_idle failed; see measured PWM and counters"
+  },
+  {
+    "time": 1788981719.707012,
+    "stage": "complete",
+    "result": {
+      "pass": false
+    }
+  }
+]

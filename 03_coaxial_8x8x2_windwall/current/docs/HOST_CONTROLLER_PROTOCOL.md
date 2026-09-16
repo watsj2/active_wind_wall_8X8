@@ -4,8 +4,9 @@ This protocol defines the first bench-testable command path for the Coaxial
 8x8x2 Windwall. It is for PWM commands only. Tach/readback should be added only
 after one controller has been proven with this command frame.
 
-The GUI defaults to the real SPI/GPIO transport. Use `python3 main.py --mock`
-only for simulation or GUI verification without the controller bus.
+The GUI has only the real SPI/GPIO transport. There is no mock or simulated
+application mode. Automated tests remain hardware-free by injecting test-only
+SPI and sync transports directly into the hardware boundary.
 
 ## Transport
 
@@ -26,6 +27,10 @@ Pi GPIO8  / CE0  / physical pin 24 -> Pico GP17
 Pi GPIO22 / sync / physical pin 15 -> Pico GP22
 Pi GND                         -> Pico/controller/ESC signal ground reference
 ```
+
+The host resolves the Raspberry Pi header GPIO controller by its stable
+`pinctrl-rp1` label rather than a boot-dependent `/dev/gpiochipN` number, then
+claims line 22 for sync.
 
 Reserved for future readback:
 

@@ -159,7 +159,8 @@ Physical tasks:
 - Wire each controller output to the intended motor/ESC signal input.
 - Tie signal ground from each ESC/controller group back to the common reference.
 - Do not connect added controller PWM outputs to live ESCs until firmware and
-  host protocol have been verified in mock/bench tests.
+  host protocol have been verified with no-output automated tests and bench
+  tests.
 
 Important: the old firmware only knows 8 Picos and 64 motors. The physical
 upgrade can be wired, but do not run the new 128-motor wall from old firmware or
@@ -241,8 +242,8 @@ Recommended physical bring-up:
 - ESCs are not overheating at idle or low PWM.
 - Supply voltage does not sag dangerously during startup.
 - All grounds are common where required.
-- The GUI is in mock/disabled-real-output mode until the 128-motor protocol is
-  deliberately enabled.
+- The GUI has no simulated-output mode. Treat every application launch as a
+  real SPI/GPIO session and verify the physical safe state before opening it.
 
 ## 11. Things Not To Do
 

@@ -1,0 +1,8 @@
+Listening on GPIO23 / physical pin 16 (input only)
+{"elapsed_s": 1.02, "samples": 50, "pulse_us_median": 998.56, "pulse_us_min": 985.69, "pulse_us_max": 999.74, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 2.02, "samples": 51, "pulse_us_median": 997.96, "pulse_us_min": 977.13, "pulse_us_max": 1003.22, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 3.04, "samples": 50, "pulse_us_median": 997.97, "pulse_us_min": 991.55, "pulse_us_max": 1005.02, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 4.04, "samples": 50, "pulse_us_median": 998.51, "pulse_us_min": 989.55, "pulse_us_max": 1001.37, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 5.04, "samples": 51, "pulse_us_median": 998.61, "pulse_us_min": 990.63, "pulse_us_max": 1001.11, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 6.06, "samples": 50, "pulse_us_median": 998.72, "pulse_us_min": 991.33, "pulse_us_max": 1003.15, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 7.02, "final": true, "samples": 48, "pulse_us_median": 998.55, "pulse_us_min": 976.96, "pulse_us_max": 1005.22, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}

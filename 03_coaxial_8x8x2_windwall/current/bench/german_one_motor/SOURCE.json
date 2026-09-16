@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/kowshiksri/active_wind_wall",
+  "revision": "0280f876e587c41cd54a499913e4e208465c6d3e",
+  "retrieved_from": "local July 15 Git bundle",
+  "files_sha256": {
+    "README.md": "c685cc62e320fae4d426966352914b36474c3e31dfbe03f889fc4682af856dbb",
+    "config/__init__.py": "c620fad11518cc8b3b3bc1b42611efb6965fe6189dbd7110320dd5ddf3ec3100",
+    "src/hardware/interface.py": "9ae0ef5f885fca79321c24c190d24e23f896f603f817c701616cb2ea67e42335",
+    "pico/firmware_template.c": "c0d155a5d64f5ae4c5894299d847e2c183ff125afa95309260a38875bdef4b37",
+    "pico/build_all_firmware.py": "07bb3cf184ca3a435ec9e5b66bfc2a04e00c7f590ce9d3d438337c22f7779154"
+  }
+}

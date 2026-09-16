@@ -11,6 +11,7 @@ from coaxial_windwall.control.signals import (
     build_group_frame,
     fraction_to_pwm,
     signal_fraction,
+    signal_pwm,
 )
 from coaxial_windwall.model import CoaxialAddress, address_from_motor_index, controller_host_indices
 
@@ -46,6 +47,27 @@ class SignalGenerationTests(unittest.TestCase):
         self.assertEqual(frame[64], 1400)
         self.assertTrue(all(value == PWM_IDLE for value in frame[1:64]))
         self.assertTrue(all(value == PWM_IDLE for value in frame[65:]))
+
+    def test_constant_pwm_uses_direct_microsecond_value(self) -> None:
+        signal = GroupSignal(
+            signal_type=SIGNAL_CONSTANT,
+            constant_pwm_us=1150,
+        )
+        self.assertEqual(signal_pwm(signal, 0.0, output_max=1800), 1150)
+
+    def test_constant_pwm_respects_experiment_ceiling(self) -> None:
+        signal = GroupSignal(
+            signal_type=SIGNAL_CONSTANT,
+            constant_pwm_us=1600,
+        )
+        self.assertEqual(signal_pwm(signal, 0.0, output_max=1400), 1400)
+
+    def test_old_constant_fraction_migrates_to_direct_pwm(self) -> None:
+        signal = GroupSignal.from_dict(
+            {"signal_type": SIGNAL_CONSTANT, "constant": 0.25}
+        )
+        self.assertEqual(signal.constant_pwm_us, 1200)
+        self.assertEqual(signal.to_dict()["constant_pwm_us"], 1200)
 
     def test_zero_fraction_is_idle(self) -> None:
         self.assertEqual(fraction_to_pwm(0.0, 1800), PWM_IDLE)

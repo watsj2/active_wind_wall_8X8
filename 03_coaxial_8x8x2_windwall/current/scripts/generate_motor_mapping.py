@@ -32,7 +32,7 @@ MARKDOWN_PATH = PROJECT_ROOT / "docs" / "MOTOR_CONTROLLER_MAPPING.md"
 
 PLANE_CODES = ("FP", "BP")
 PLANE_NAMES = ("Front Plane", "Back Plane")
-ESC_TYPES = ("Pichler XQ-45", "T-MOTOR AIR 40")
+ESC_TYPE = "Pichler QX-45"
 
 CSV_FIELDS = (
     "motor_id",
@@ -69,7 +69,7 @@ def mapping_rows() -> list[dict[str, str | int]]:
                 "layer_code": address.layer_label,
                 "plane_code": PLANE_CODES[address.layer],
                 "plane_name": PLANE_NAMES[address.layer],
-                "esc_type": ESC_TYPES[address.layer],
+                "esc_type": ESC_TYPE,
                 "motor_index": address.motor_index,
                 "host_index": address.motor_index,
                 "controller": address.controller_label,
@@ -135,8 +135,8 @@ def markdown_text(rows: list[dict[str, str | int]]) -> str:
         "- Grid orientation: `R1` is top, `C1` is left, viewed from the operator/front side.",
         "- Pair labels follow the original 8x8 Pico blocks; the top row is `P01-P04, P33-P36`.",
         "- Motor labels: `F01-F64` are front-layer motors; `B01-B64` are back-layer motors.",
-        "- `FP` means the front plane and uses Pichler XQ-45 ESCs in this plan.",
-        "- `BP` means the back plane and uses T-MOTOR AIR 40 ESCs in this plan.",
+        "- `FP` means the front plane and uses Pichler QX-45 ESCs.",
+        "- `BP` means the back plane and uses Pichler QX-45 ESCs.",
         "- Controller labels: `C01-C16` are physical, one-based labels.",
         "- Controller channels: `CH1-CH8` are physical, one-based labels.",
         "- Host indices: `controller_index` is 0-15; `channel_index` and `host_index` are zero-based.",

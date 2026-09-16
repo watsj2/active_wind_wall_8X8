@@ -1,0 +1,11 @@
+{
+  "firmware": "german-one-motor-v1",
+  "board": "F68B8438147951D7",
+  "command": "PULSE USB",
+  "requested_pwm_us": 1200,
+  "duration_s": 1,
+  "response": "OK PULSE USB",
+  "stop_response": "OK STOP",
+  "final_status": {"pwm_us": 1000, "armed": 0, "direct": 0},
+  "operator_observed": "motor spun"
+}

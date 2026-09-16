@@ -32,8 +32,8 @@ R8 -> P29, P30, P31, P32, P61, P62, P63, P64
 Each wind pixel has two motor outputs:
 
 ```text
-Fxx -> front motor / Pichler XQ-45 ESC
-Bxx -> back motor / T-MOTOR AIR 40 ESC
+Fxx -> front motor / Pichler QX-45 ESC
+Bxx -> back motor / Pichler QX-45 ESC
 ```
 
 Host frame order remains layer-first:
@@ -110,10 +110,10 @@ C09 CH1 / GP0 -> F02
 C09 CH2 / GP1 -> B02
 C09 CH3 / GP2 -> F03
 C09 CH4 / GP3 -> B03
-C09 CH5 / GP4 -> F10
-C09 CH6 / GP5 -> B10
-C09 CH7 / GP6 -> F11
-C09 CH8 / GP7 -> B11
+C09 CH5 / GP4 -> F06
+C09 CH6 / GP5 -> B06
+C09 CH7 / GP6 -> F07
+C09 CH8 / GP7 -> B07
 ```
 
 ## Firmware Implication

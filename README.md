@@ -2,7 +2,8 @@
 
 This repository is a shareable archive of the windwall work from the original
 6x6 German wall reference through the active 8x8 wall and the coaxial 8x8x2
-work completed on July 14-15, 2026.
+work initially archived on July 14-15, 2026, with the coaxial project updated
+through September 16, 2026.
 
 ## Folder Map
 
@@ -34,33 +35,20 @@ git_bundles/
   Git bundle exports for preserving source history when available.
 ```
 
-## Current Coaxial Mapping
+## Current Coaxial Snapshot — September 16, 2026
 
-The latest 8x8x2 mapping uses row-major pixel numbering:
+The current 8x8x2 source, GUI, C01–C16 firmware images, bench diagnostics,
+mapping, and session handoffs are in [the coaxial project](03_coaxial_8x8x2_windwall/current/README.md).
+Physical pair labels are 01–32 on the left and 33–64 on the right, with two
+motors per pair. C01 owns pairs 01/04/05/08. The generated controller mapping
+is authoritative; controller ownership is not contiguous.
 
-```text
-P01-P08  -> row 1, left to right
-P09-P16  -> row 2, left to right
-...
-P57-P64  -> row 8, left to right
-```
-
-Controller mapping preserves the original 8x8 harness where practical:
-
-- `C01-C08` reuse the old 8x8 harness controllers.
-- `C09-C16` are new infill controllers.
-- Each controller has 8 PWM channels.
-- Channel-to-Pico pin mapping is `CH1=GP0`, `CH2=GP1`, through `CH8=GP7`.
-- The firmware images `firmware_c01.uf2` through `firmware_c16.uf2` match this
-  mapping and were flashed to Picos 1-16.
-
-Primary mapping files:
-
-```text
-03_coaxial_8x8x2_windwall/current/docs/coaxial_8x8x2_pico_mapping.png
-03_coaxial_8x8x2_windwall/current/docs/MOTOR_CONTROLLER_MAPPING.md
-03_coaxial_8x8x2_windwall/current/config/motor_controller_mapping.csv
-```
+All 51 hardware-free tests and the generated mapping check pass. The latest
+hardware diagnosis is September 15: C01 idle PWM works, but its response to a
+1200 us command remains unresolved. The oscilloscope SCLK observation is pending.
+See the [latest handoff](03_coaxial_8x8x2_windwall/current/SESSION_HANDOFF.md).
+The GUI opens real hardware transport; these software checks used injected
+no-output transports. No hardware was operated for this archive update.
 
 ## What Was Excluded
 

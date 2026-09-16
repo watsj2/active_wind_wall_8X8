@@ -1,0 +1,12 @@
+{
+  "firmware": "german-one-motor-v1",
+  "board": "F68B8438147951D7",
+  "command": "ARM SPI + 36-byte active frame",
+  "host_frames": 50,
+  "host_sync_pulses": 50,
+  "before": {"bytes": 0, "syncs": 198, "valid": 0, "invalid": 198},
+  "after": {"bytes": 0, "syncs": 248, "valid": 0, "invalid": 248, "timeouts": 1},
+  "stop": "OK STOP",
+  "final": {"pwm_us": 1000, "armed": 0},
+  "result": "five-wire sync arrived; SPI bytes did not; no motor movement"
+}

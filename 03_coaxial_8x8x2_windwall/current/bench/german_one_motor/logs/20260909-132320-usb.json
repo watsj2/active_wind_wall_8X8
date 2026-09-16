@@ -1,0 +1,150 @@
+[
+  {
+    "time": 1788981797.9457016,
+    "stage": "connected",
+    "result": {
+      "firmware": "german-one-motor-v1",
+      "board": "F68B8438147951D7",
+      "pwm_us": 1000,
+      "armed": 0,
+      "direct": 0,
+      "bytes": 152152,
+      "syncs": 581,
+      "valid": 0,
+      "invalid": 581,
+      "last_length": 0,
+      "raw": 0,
+      "overflow": 572,
+      "overrun": 0,
+      "collisions": 1,
+      "timeouts": 0,
+      "limits": 0,
+      "ce0": 1,
+      "sync_level": 0
+    }
+  },
+  {
+    "time": 1788981797.9506319,
+    "stage": "identity",
+    "result": {
+      "firmware": "german-one-motor-v1",
+      "board": "F68B8438147951D7",
+      "pwm_us": 1000,
+      "armed": 0,
+      "direct": 0,
+      "bytes": 152152,
+      "syncs": 581,
+      "valid": 0,
+      "invalid": 581,
+      "last_length": 0,
+      "raw": 0,
+      "overflow": 572,
+      "overrun": 0,
+      "collisions": 1,
+      "timeouts": 0,
+      "limits": 0,
+      "ce0": 1,
+      "sync_level": 0
+    }
+  },
+  {
+    "time": 1788981798.550834,
+    "stage": "boot_idle",
+    "result": {
+      "target_us": 1000,
+      "samples": 26,
+      "matching": 26,
+      "median_us": 995.064,
+      "min_us": 984.277,
+      "max_us": 999.148,
+      "frequency_hz": 49.9988062785001,
+      "malformed": 0,
+      "pass": true
+    }
+  },
+  {
+    "time": 1788981799.1015217,
+    "stage": "usb_direct_1200",
+    "result": {
+      "target_us": 1200,
+      "samples": 23,
+      "matching": 23,
+      "median_us": 1194.981,
+      "min_us": 1183.721,
+      "max_us": 1209.536,
+      "frequency_hz": 49.99984750046512,
+      "malformed": 0,
+      "pass": true
+    }
+  },
+  {
+    "time": 1788981800.1517844,
+    "stage": "usb_deadline_idle",
+    "result": {
+      "target_us": 1000,
+      "samples": 16,
+      "matching": 16,
+      "median_us": 994.5735,
+      "min_us": 984.499,
+      "max_us": 1004.777,
+      "frequency_hz": 49.99966000231199,
+      "malformed": 0,
+      "pass": true
+    }
+  },
+  {
+    "time": 1788981800.1527634,
+    "stage": "after_usb",
+    "result": {
+      "firmware": "german-one-motor-v1",
+      "board": "F68B8438147951D7",
+      "pwm_us": 1000,
+      "armed": 0,
+      "direct": 0,
+      "bytes": 152152,
+      "syncs": 581,
+      "valid": 0,
+      "invalid": 581,
+      "last_length": 0,
+      "raw": 0,
+      "overflow": 572,
+      "overrun": 0,
+      "collisions": 1,
+      "timeouts": 0,
+      "limits": 1,
+      "ce0": 1,
+      "sync_level": 0
+    }
+  },
+  {
+    "time": 1788981800.1545928,
+    "stage": "final_idle",
+    "result": {
+      "firmware": "german-one-motor-v1",
+      "board": "F68B8438147951D7",
+      "pwm_us": 1000,
+      "armed": 0,
+      "direct": 0,
+      "bytes": 152152,
+      "syncs": 581,
+      "valid": 0,
+      "invalid": 581,
+      "last_length": 0,
+      "raw": 0,
+      "overflow": 572,
+      "overrun": 0,
+      "collisions": 1,
+      "timeouts": 0,
+      "limits": 1,
+      "ce0": 1,
+      "sync_level": 0
+    }
+  },
+  {
+    "time": 1788981800.1681118,
+    "stage": "complete",
+    "result": {
+      "pass": true
+    }
+  }
+]

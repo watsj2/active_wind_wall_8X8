@@ -1,0 +1,265 @@
+#include "pico/stdlib.h"
+#include "hardware/pwm.h"
+#include "hardware/spi.h"
+#include "hardware/gpio.h"
+#include "hardware/clocks.h"
+#include <stdbool.h>
+
+// PWM timing — derived at runtime from actual system clock (no hardcoded assumptions)
+#define PWM_DIVIDER  64.0f   // Clock prescaler applied to sys_clk before PWM counter
+#define PWM_FREQ_HZ  50.0f   // Target ESC PWM frequency (standard servo/ESC = 50 Hz)
+
+// ==========================================
+// CONFIGURATION
+// ==========================================
+
+// Board identifier — injected by build_all_firmware.py for each board (0 .. NUM_PICOS-1)
+#define PICO_ID {{PICO_ID}}
+
+// Motor configuration — injected from config/__init__.py at build time
+#define MOTORS_PER_PICO {{MOTORS_PER_PICO}}
+static const uint MOTOR_PINS[MOTORS_PER_PICO] = {{MOTOR_PINS}};
+
+// Status LED
+#define LED_PIN 25
+
+// SPI Configuration (Slave mode)
+// Receives motor commands from Raspberry Pi via SPI
+#define SPI_INST spi0
+#define PIN_MISO 19   // SPI0 TX (to Pi MISO) - Currently unused
+#define PIN_CS   17   // SPI0 CSn (from Pi CE0)
+#define PIN_SCK  18   // SPI0 SCK (clock)
+#define PIN_MOSI 16   // SPI0 RX (from Pi MOSI) - Data input
+
+// Frame structure — injected from config/__init__.py at build time
+// Total system: {{NUM_MOTORS}} motors across {{NUM_PICOS}} Pico boards ({{MOTORS_PER_PICO}} motors each)
+// Each SPI frame contains {{NUM_MOTORS}} bytes, one per motor
+#define TOTAL_MOTORS    {{NUM_MOTORS}}
+#define FRAME_BYTES     TOTAL_MOTORS
+
+// Calculate which bytes in the frame belong to this Pico
+// Example: PICO_ID=1 -> motors 9-17 (bytes 9-17 in frame)
+#define MY_START (PICO_ID * MOTORS_PER_PICO)
+#define MY_END   (MY_START + MOTORS_PER_PICO)
+
+// Synchronization pulse input
+// Rising edge triggers frame latch and PWM update
+#define SYNC_PIN 22
+
+// ==========================================
+// GLOBAL STATE
+// ==========================================
+
+// PWM hardware configuration for each motor
+uint slices[MOTORS_PER_PICO];      // PWM slice numbers
+uint channels[MOTORS_PER_PICO];    // PWM channel numbers (A or B)
+
+// Computed at boot from actual sys_clk — used by set_motor_pwm_us()
+uint16_t pwm_wrap_value = 0;       // PWM counter period (ticks per 20 ms frame)
+float    counts_per_us  = 0.0f;    // PWM counter ticks per microsecond
+
+// Motor control buffers
+volatile uint8_t motor_values[MOTORS_PER_PICO];         // Incoming values from SPI (0-255)
+volatile uint8_t active_frame_buffer[MOTORS_PER_PICO];  // Latched values for current frame
+
+// Synchronization state
+volatile bool sync_pulse_detected = false;  // Set by IRQ when SYNC pin goes high
+volatile uint32_t sync_counter = 0;         // Counts SYNC pulses for LED blink
+
+// SPI frame tracking
+volatile uint8_t byte_index = 0;  // Current position in 36-byte frame (0..35)
+
+// ==========================================
+// PWM CONTROL
+// ==========================================
+void set_motor_pwm_us(uint motor_index, uint16_t pulse_us) {
+    // Clamp to valid ESC PWM range — limits injected from config/__init__.py
+    if (pulse_us < {{PWM_MIN}}) pulse_us = {{PWM_MIN}};
+    if (pulse_us > {{PWM_MAX}}) pulse_us = {{PWM_MAX}};
+
+    // Convert µs → counter ticks using the runtime-computed ratio.
+    // counts_per_us = sys_hz / PWM_DIVIDER / 1_000_000, so this is
+    // correct regardless of which system clock frequency the Pico boots at.
+    uint16_t level = (uint16_t)(pulse_us * counts_per_us);
+    if (level > pwm_wrap_value) level = pwm_wrap_value;
+
+    // Update PWM hardware
+    pwm_set_chan_level(slices[motor_index], channels[motor_index], level);
+}
+
+// ==========================================
+// SYNC INTERRUPT HANDLER
+// ==========================================
+
+/**
+ * SYNC pin interrupt handler
+ *
+ * Called on rising edge of SYNC signal from Raspberry Pi.
+ * Sets flag only — all processing happens in the main loop.
+ */
+void sync_irq_handler(uint gpio, uint32_t events) {
+    if (gpio == SYNC_PIN) {
+        sync_pulse_detected = true;
+    }
+}
+
+// ==========================================
+// MAIN PROGRAM
+// ==========================================
+int main() {
+    stdio_init_all();
+
+    // --- Runtime clock calibration (fixes #1, #2, #3) ---
+    // Query the actual system clock rather than assuming a fixed frequency.
+    // The Pico SDK default is 125 MHz; overclocked boards may differ.
+    // All PWM timing is derived from this value so the firmware is portable.
+    const uint32_t sys_hz = clock_get_hz(clk_sys);
+    counts_per_us  = (float)sys_hz / PWM_DIVIDER / 1000000.0f;
+    pwm_wrap_value = (uint16_t)((float)sys_hz / PWM_DIVIDER / PWM_FREQ_HZ) - 1;
+    // Example at 125 MHz: divider=64 → tick_rate=1.953 MHz → wrap=39062 → 50 Hz
+    // Example at 150 MHz: divider=64 → tick_rate=2.344 MHz → wrap=46874 → 50 Hz
+
+    // Initialize status LED (on at startup)
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+    gpio_put(LED_PIN, 1);
+
+    // Initialize PWM for all motors
+    // Phase 1: configure every slice/channel — do NOT enable yet.
+    // GPIO pairs share a slice (0+1→slice0, 2+3→slice1, etc.).
+    // Calling pwm_set_clkdiv/wrap on an already-running slice causes a glitch,
+    // so we configure everything first, then start all slices atomically below.
+    uint32_t slice_mask = 0;
+    for (uint i = 0; i < MOTORS_PER_PICO; i++) {
+        gpio_set_function(MOTOR_PINS[i], GPIO_FUNC_PWM);
+        slices[i] = pwm_gpio_to_slice_num(MOTOR_PINS[i]);
+        channels[i] = pwm_gpio_to_channel(MOTOR_PINS[i]);
+
+        // Only configure each slice once (skip if already seen via its pair pin)
+        if (!(slice_mask & (1u << slices[i]))) {
+            pwm_set_clkdiv(slices[i], PWM_DIVIDER);   // named constant, not magic number
+            pwm_set_wrap(slices[i], pwm_wrap_value);   // derived from actual sys_hz at runtime
+        }
+        slice_mask |= (1u << slices[i]);
+
+        // Initialize motor buffers to zero
+        motor_values[i] = 0;
+        active_frame_buffer[i] = 0;
+
+        // Fix #4: output a valid armed-idle pulse immediately on boot.
+        // ESCs require a continuous PWM signal once powered; silent output (level=0)
+        // can cause ESCs to enter an undefined state before the first SYNC arrives.
+        set_motor_pwm_us(i, {{PWM_MIN}});
+    }
+
+    // Phase 2: enable all slices simultaneously — clean, glitch-free start
+    pwm_set_mask_enabled(slice_mask);
+
+    // Configure SPI in slave mode
+    // Baud rate parameter is ignored in slave mode (clock provided by master)
+    spi_init(SPI_INST, 1000000);
+    spi_set_slave(SPI_INST, true);
+    
+    // Configure SPI pins
+    gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
+    gpio_set_function(PIN_CS,   GPIO_FUNC_SPI);
+    gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
+    gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
+
+    // Fix: flush SPI FIFO before entering the main loop.
+    // Between SPI init and the first valid Pi frame, the floating MOSI line
+    // can clock garbage bytes into the FIFO. Draining here ensures motor_values[]
+    // is only ever written from real frames, not power-up noise.
+    while (spi_is_readable(SPI_INST)) {
+        (void)spi_get_hw(SPI_INST)->dr;
+    }
+
+    // Configure SYNC pin with interrupt on rising edge
+    gpio_init(SYNC_PIN);
+    gpio_set_dir(SYNC_PIN, GPIO_IN);
+    gpio_pull_down(SYNC_PIN);
+    gpio_set_irq_enabled_with_callback(SYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &sync_irq_handler);
+
+    // ==========================================
+    // MAIN LOOP
+    // Pure pass-through: receive SPI bytes, latch on SYNC, set PWM.
+    // No watchdog — Pi is the sole authority. Physical kill switch
+    // is the safety backstop.
+    // ==========================================
+    while (true) {
+
+        // === Step A: Receive SPI data ===
+        // Read bytes as they arrive over SPI
+        // Each byte represents one motor value (0-255) in the 36-motor array
+        while (spi_is_readable(SPI_INST)) {
+            uint8_t rx = (uint8_t)spi_get_hw(SPI_INST)->dr;
+
+            uint8_t idx = byte_index;
+            if (byte_index < FRAME_BYTES) {
+                byte_index++;
+            } else {
+                // Extra bytes beyond 36 are ignored until next SYNC
+            }
+
+            // Store only bytes that belong to this Pico's motors
+            if (idx >= MY_START && idx < MY_END) {
+                motor_values[idx - MY_START] = rx;
+            }
+        }
+
+        // === Step B: Process SYNC pulse ===
+        // On SYNC rising edge: latch motor values and update PWM atomically
+        if (sync_pulse_detected) {
+            sync_pulse_detected = false;
+
+            // Fix: only apply values if a complete frame was received.
+            // If byte_index < FRAME_BYTES the Pi sent a partial frame (or SYNC
+            // fired early due to noise). Applying a partial frame would leave
+            // some motors on stale/garbage values from the previous cycle.
+            if (byte_index == FRAME_BYTES) {
+
+                // Atomic snapshot: copy latest SPI values to active buffer,
+                // then immediately zero motor_values[] so that any bytes missed
+                // in the NEXT frame default to 0 (→ 1000 µs idle) rather than
+                // silently carrying forward a stale value.
+                for (uint i = 0; i < MOTORS_PER_PICO; i++) {
+                    active_frame_buffer[i] = motor_values[i];
+                    motor_values[i] = 0;
+                }
+
+                // Convert motor values (0-255) to PWM pulse widths and update hardware
+                for (uint i = 0; i < MOTORS_PER_PICO; i++) {
+                    uint8_t raw_val = active_frame_buffer[i];
+
+                    uint16_t target_pwm;
+                    if (raw_val == 0) {
+                        // 0 = explicit idle/stop — hold at PWM_MIN (armed, not spinning)
+                        target_pwm = {{PWM_MIN}};
+                    } else {
+                        // Map bytes 1-255 → PWM_MIN_RUNNING to PWM_MAX (linear)
+                        // Formula injected from config/__init__.py at build time:
+                        //   PWM_MIN_RUNNING = {{PWM_MIN_RUNNING}} µs
+                        //   PWM_RANGE       = {{PWM_RANGE}} µs  (PWM_MAX - PWM_MIN_RUNNING)
+                        target_pwm = {{PWM_MIN_RUNNING}} + ((uint32_t)raw_val * {{PWM_RANGE}}) / 255;
+                    }
+
+                    // Safety clamp — ceiling from config/__init__.py
+                    if (target_pwm > {{PWM_MAX}}) target_pwm = {{PWM_MAX}};
+
+                    set_motor_pwm_us(i, target_pwm);
+                }
+            }
+
+            // Reset frame byte counter for next transmission cycle regardless
+            // of whether the frame was complete — re-sync to the next frame start.
+            byte_index = 0;
+
+            // Toggle LED every 20 frames for visual feedback
+            sync_counter++;
+            if (sync_counter >= 20) {
+                gpio_xor_mask(1u << LED_PIN);
+                sync_counter = 0;
+            }
+        }
+    }
+}

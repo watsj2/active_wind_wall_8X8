@@ -1,0 +1,13 @@
+GUI closed normally. Starting input capture.
+Listening on GPIO23 / physical pin 16 (input only)
+COMMAND: only F01/C01 GP0 at 1200 us for 1.0 s
+STOP: disarmed 1000 us sent
+Final idle sent; SPI and sync released.
+{"elapsed_s": 1.01, "samples": 50, "pulse_us_median": 997.18, "pulse_us_min": 987.49, "pulse_us_max": 1001.8, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 2.01, "samples": 50, "pulse_us_median": 997.71, "pulse_us_min": 260.37, "pulse_us_max": 1001.73, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 4}
+{"elapsed_s": 3.01, "samples": 50, "pulse_us_median": 997.16, "pulse_us_min": 483.81, "pulse_us_max": 1000.66, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 1}
+{"elapsed_s": 4.01, "samples": 50, "pulse_us_median": 999.21, "pulse_us_min": 828.71, "pulse_us_max": 1006.95, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 2}
+{"elapsed_s": 5.02, "samples": 51, "pulse_us_median": 998.86, "pulse_us_min": 587.07, "pulse_us_max": 1001.71, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 6.02, "samples": 50, "pulse_us_median": 998.65, "pulse_us_min": 992.93, "pulse_us_max": 999.73, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 7.03, "samples": 50, "pulse_us_median": 998.08, "pulse_us_min": 991.32, "pulse_us_max": 1000.73, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
+{"elapsed_s": 8.01, "final": true, "samples": 49, "pulse_us_median": 998.41, "pulse_us_min": 991.82, "pulse_us_max": 1001.04, "frequency_hz": 50.0, "unpaired_or_out_of_order_edges": 0}
